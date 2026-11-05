@@ -7,6 +7,7 @@ import { useCart } from "./CartProvider";
 import { BagIcon, MenuIcon, CloseIcon, UserIcon, SearchIcon, PhoneIcon, WhatsAppIcon } from "./icons";
 import { telLink, whatsappLink } from "@/lib/format";
 import { isCampaignLive } from "@/lib/campaign";
+import Marquee from "./Marquee";
 
 export default function Header({ categories, store, campaign }) {
   const campaignLive = isCampaignLive(campaign);
@@ -52,9 +53,11 @@ export default function Header({ categories, store, campaign }) {
             </a>
           </div>
           {campaignLive && campaign.show_announcement && campaign.announcement ? (
-            <Link href={`/${campaign.slug}`} className="line-clamp-2 min-w-0 flex-1 text-center font-medium leading-snug hover:text-gold-dark sm:truncate">
-              <span className="text-gold-dark">✦</span> {campaign.announcement} <span className="underline underline-offset-2">Shop now</span>
-            </Link>
+            <Marquee href={`/${campaign.slug}`} className="mx-2 min-w-0 flex-1 font-medium hover:text-gold-dark">
+              <span className="mr-2 text-gold-dark">✦</span>
+              {campaign.announcement}
+              <span className="ml-2 underline underline-offset-2">Shop now</span>
+            </Marquee>
           ) : (
             <span className="flex-1" />
           )}

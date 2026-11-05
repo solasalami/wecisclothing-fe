@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { getCategoryBySlug, listProducts } from "@/lib/catalog";
-import { stripHtml } from "@/lib/format";
+import { excerpt } from "@/lib/format";
 import Listing from "@/components/Listing";
 
 const PER_PAGE = 24;
@@ -11,7 +11,7 @@ export async function generateMetadata({ params }) {
   if (!c) return {};
   return {
     title: c.parent ? `${c.parent.name}'s ${c.name}` : `${c.name}'s Clothing`,
-    description: stripHtml(c.description).slice(0, 160) || `Shop ${c.name} at Wecis Clothing, Lagos.`,
+    description: excerpt(c.description, 160) || `Shop ${c.name} at Wecis Clothing, Lagos.`,
     alternates: { canonical: `/category/${c.slug}` },
   };
 }
@@ -27,7 +27,8 @@ export default async function CategoryPage({ params, searchParams }) {
     <Listing
       basePath={`/category/${category.slug}`}
       title={category.parent ? `${category.parent.name} · ${category.name}` : category.name}
-      intro={stripHtml(category.description)}
+      intro={category.description}
+      aboutTitle={category.parent ? `About ${category.parent.name}\u2019s ${category.name}` : `About our ${category.name.toLowerCase()}\u2019s collection`}
       subcategories={category.children}
       result={result}
       page={page}

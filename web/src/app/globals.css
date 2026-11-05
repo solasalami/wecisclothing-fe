@@ -56,3 +56,19 @@
 .prose-wecis h3 { @apply mb-2 mt-4 text-xl; }
 .prose-wecis a { @apply underline; }
 .prose-wecis strong { @apply font-semibold; }
+
+/* Announcement marquee (components/Marquee.js) */
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+.marquee {
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 5%, #000 95%, transparent);
+  mask-image: linear-gradient(to right, transparent, #000 5%, #000 95%, transparent);
+}
+.marquee-track { animation: marquee var(--marquee-duration, 28s) linear infinite; }
+.marquee:hover .marquee-track,
+.marquee:focus-visible .marquee-track { animation-play-state: paused; }
+@media (prefers-reduced-motion: reduce) {
+  .marquee-track { animation: none; }
+}

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import ProductGrid from "./ProductGrid";
+import { excerpt, toParagraphs, tidyText } from "@/lib/format";
 
 const SORT_OPTIONS = [
   ["default", "Featured"],
@@ -10,7 +11,11 @@ const SORT_OPTIONS = [
 ];
 
 /** Shared listing UI: sub-category chips, sort (GET form, works without JS), pagination. */
-export default function Listing({ basePath, title, intro, subcategories = [], result, page, perPage, sort, q }) {
+export default function Listing({ basePath, title, intro, aboutTitle, subcategories = [], result, page, perPage, sort, q }) {
+  // Short intro above the products; the full text (if longer) sits below them, left-aligned.
+  const short = intro ? excerpt(intro, 170) : "";
+  const full = intro ? toParagraphs(intro) : [];
+  const hasMore = full.length && tidyText(full.join(" ")).length > short.length + 10;
   const pages = Math.max(1, Math.ceil(result.total / perPage));
   const qs = (p) => {
     const sp = new URLSearchParams();
@@ -24,7 +29,17 @@ export default function Listing({ basePath, title, intro, subcategories = [], re
     <div className="mx-auto max-w-7xl px-4 py-10">
       <div className="mb-8 text-center">
         <h1 className="text-4xl">{title}</h1>
-        {intro && <p className="mx-auto mt-3 max-w-2xl text-muted">{intro}</p>}
+        {short && (
+          <p className="mx-auto mt-3 max-w-2xl text-[15px] leading-relaxed text-muted">
+            {short}
+            {hasMore && (
+              <>
+                {" "}
+                <a href="#about" className="whitespace-nowrap text-gold-dark underline underline-offset-2 hover:text-ink">Read more</a>
+              </>
+            )}
+          </p>
+        )}
       </div>
       {subcategories.length > 0 && (
         <div className="mb-8 flex flex-wrap justify-center gap-2">
@@ -55,6 +70,14 @@ export default function Listing({ basePath, title, intro, subcategories = [], re
             </Link>
           ))}
         </nav>
+      )}
+      {hasMore && (
+        <section id="about" className="mx-auto mt-20 max-w-3xl scroll-mt-32 border-t border-line pt-12">
+          <h2 className="mb-5 text-3xl">{aboutTitle || `About ${title}`}</h2>
+          <div className="space-y-4 text-[15px] leading-7 text-ink/75">
+            {full.map((para, i) => <p key={i}>{para}</p>)}
+          </div>
+        </section>
       )}
     </div>
   );
