@@ -1,4 +1,6 @@
 @import "tailwindcss";
+/* Don't scan the legacy OpenCart site for class names */
+@source not "../../wecisclothing";
 
 /* Brand palette carried over from the Styleway_Apparel OpenCart theme */
 @theme inline {

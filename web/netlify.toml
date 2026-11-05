@@ -1,8 +1,0 @@
-# Used when the Netlify UI "Base directory" is set to `web`.
-# (If it's left blank, the repository-root netlify.toml sets base = "web" instead.)
-[build]
-  command = "npm run build"
-  publish = ".next"
-
-[build.environment]
-  NODE_VERSION = "22"

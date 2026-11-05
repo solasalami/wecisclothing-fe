@@ -10,6 +10,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Legacy OpenCart site (reference only)
+    "wecisclothing/**",
+    ".uploads/**",
   ]),
 ]);
 

@@ -26,7 +26,7 @@ cp .env.example .env.local      # then set AUTH_SECRET (openssl rand -base64 48)
 # 3. install, create tables, import the OpenCart catalogue, create an admin
 npm install
 npm run db:migrate
-npm run db:import                # reads ../localhost.sql and ../wecisclothing/image
+npm run db:import                # reads ./localhost.sql and ./wecisclothing/image (both git-ignored)
 npm run admin:create -- "Your Name" you@wecisclothing.com 'a-strong-password' owner
 
 npm run dev
@@ -37,7 +37,7 @@ With `PAYMENT_MOCK=true` (dev only) checkout sends you to a **simulated OPay pag
 ## Deploying to Netlify
 
 1. **MySQL hosting.** Netlify doesn't host MySQL, so use a managed MySQL 8 that's reachable over the internet, for example **Aiven for MySQL**, **TiDB Cloud Serverless**, **DigitalOcean Managed MySQL**, or your current cPanel host with Remote MySQL enabled. Most of these need `DATABASE_SSL=true`.
-2. Push this `web/` folder to a Git repo and create a Netlify site from it. Netlify detects Next.js automatically, and `netlify.toml` is included.
+2. Push the repository to Git and create a Netlify site from it. Leave **Base directory** blank, since the app is at the repository root. `netlify.toml` sets the build command, `.next` publish folder and the Next.js runtime plugin.
 3. In **Site configuration → Environment variables** set:
    - `DATABASE_URL`, `DATABASE_SSL`
    - `AUTH_SECRET` (long random string)

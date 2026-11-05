@@ -1,5 +1,5 @@
 // One-time import of real catalogue data from the OpenCart dump into the clean schema.
-// Usage: node scripts/import-opencart.mjs ../localhost.sql ../wecisclothing/image
+// Usage: node scripts/import-opencart.mjs ./localhost.sql ./wecisclothing/image
 //
 // Imports: categories (re-parented under Men/Women), products, images, home banners,
 // information pages, showrooms and default settings.
@@ -10,7 +10,7 @@ import path from "node:path";
 import crypto from "node:crypto";
 import mysql from "mysql2/promise";
 
-const [sqlPath = "../localhost.sql", imageRoot = "../wecisclothing/image"] = process.argv.slice(2);
+const [sqlPath = "./localhost.sql", imageRoot = "./wecisclothing/image"] = process.argv.slice(2).filter((a) => !a.startsWith("--"));
 const sql = fs.readFileSync(sqlPath, "utf8");
 
 // ---------- tiny SQL INSERT parser ----------

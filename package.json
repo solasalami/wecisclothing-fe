@@ -1,5 +1,5 @@
 {
-  "name": "web",
+  "name": "wecisclothing",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "db:migrate": "node scripts/migrate.mjs",
-    "db:import": "node scripts/import-opencart.mjs ../localhost.sql ../wecisclothing/image",
+    "db:import": "node scripts/import-opencart.mjs ./localhost.sql ./wecisclothing/image",
     "admin:create": "node scripts/create-admin.mjs"
   },
   "dependencies": {
@@ -23,6 +23,7 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@netlify/plugin-nextjs": "^5.16.6",
     "@tailwindcss/turbopack": "^4",
     "eslint": "^9",
     "eslint-config-next": "16.4.5",
