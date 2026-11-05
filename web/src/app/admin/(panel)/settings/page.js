@@ -1,0 +1,57 @@
+import { requireOwner } from "@/lib/auth";
+import { getSettings } from "@/lib/settings";
+import { opayConfigured } from "@/lib/opay";
+import { ActionForm, SubmitButton } from "@/components/admin/Form";
+import { Field, TextArea, Check, Card, PageHeader } from "@/components/admin/Fields";
+import { saveSettings } from "@/app/admin/actions";
+
+export const metadata = { title: "Settings" };
+
+export default async function SettingsAdmin() {
+  await requireOwner();
+  const { store, shipping, payments, tracking } = await getSettings();
+  return (
+    <div className="max-w-4xl">
+      <PageHeader title="Settings" />
+      <ActionForm action={saveSettings}>
+        <Card title="Store & contact">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Store name" name="store_name" defaultValue={store.name} />
+            <Field label="Email" name="email" type="email" defaultValue={store.email} />
+            <Field label="Sales phone" name="phone" defaultValue={store.phone} />
+            <Field label="WhatsApp number" name="whatsapp" defaultValue={store.whatsapp} hint="Include country code, e.g. +234 803 364 0090" />
+          </div>
+          <Field label="Tagline" name="tagline" defaultValue={store.tagline} />
+          <Field label="Default WhatsApp message" name="whatsapp_message" defaultValue={store.whatsapp_message} />
+          <div className="grid gap-4 sm:grid-cols-3">
+            <Field label="Instagram URL" name="instagram" defaultValue={store.instagram} />
+            <Field label="Facebook URL" name="facebook" defaultValue={store.facebook} />
+            <Field label="TikTok URL" name="tiktok" defaultValue={store.tiktok} />
+          </div>
+        </Card>
+        <Card title="Delivery fees (₦)">
+          <div className="grid gap-4 sm:grid-cols-3">
+            <Field label="Lagos delivery" name="delivery_lagos_fee" type="number" min="0" defaultValue={shipping.delivery_lagos_fee} />
+            <Field label="Outside Lagos" name="delivery_nationwide_fee" type="number" min="0" defaultValue={shipping.delivery_nationwide_fee} />
+            <Field label="Free delivery over" name="free_delivery_threshold" type="number" min="0" defaultValue={shipping.free_delivery_threshold} hint="0 = never free" />
+          </div>
+          <Check label="Allow free pick-up from showrooms" name="pickup_enabled" defaultChecked={shipping.pickup_enabled} />
+        </Card>
+        <Card title="Payments">
+          <Check
+            label="OPay online payments"
+            name="opay_enabled"
+            defaultChecked={payments.opay_enabled}
+            hint={opayConfigured() ? "OPay keys detected." : "OPay keys are not configured yet — set OPAY_MERCHANT_ID, OPAY_PUBLIC_KEY and OPAY_SECRET_KEY in Netlify."}
+          />
+          <Check label="Direct bank transfer" name="bank_transfer_enabled" defaultChecked={payments.bank_transfer_enabled} />
+          <TextArea label="Bank transfer instructions" name="bank_transfer_details" rows={4} defaultValue={payments.bank_transfer_details} />
+        </Card>
+        <Card title="Tracking">
+          <Field label="Google Tag Manager container ID" name="gtm_id" defaultValue={tracking.gtm_id} placeholder="GTM-XXXXXXX" hint="GA4, Google Ads conversions and remarketing are configured inside GTM. See docs/TRACKING.md." />
+        </Card>
+        <SubmitButton>Save settings</SubmitButton>
+      </ActionForm>
+    </div>
+  );
+}
