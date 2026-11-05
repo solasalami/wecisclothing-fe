@@ -1,0 +1,9 @@
+# The Next.js app lives in /web. Netlify reads this file from the repository root,
+# so `base` tells it where to install, build and run the Next.js runtime.
+[build]
+  base = "web"
+  command = "npm run build"
+  publish = ".next"   # relative to base → web/.next
+
+[build.environment]
+  NODE_VERSION = "22"
