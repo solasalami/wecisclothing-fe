@@ -1,38 +1,71 @@
 import Link from "next/link";
 import ProductImage from "./ProductImage";
+import QuickBuy from "./QuickBuy";
 import { formatNaira } from "@/lib/format";
 
-export default function ProductCard({ product, priority }) {
+/** Cumo-inspired card: tall portrait photo, corner badge, hover "Quick buy", centred title + price. */
+export default function ProductCard({ product, priority, sizes = "(max-width: 768px) 70vw, 25vw" }) {
   const onSale = product.compare_at_price && Number(product.compare_at_price) > Number(product.price);
+  const badge = !product.in_stock
+    ? "Sold out"
+    : product.kind === "package"
+      ? product.display_badge || product.package_label || "Package"
+      : onSale
+        ? "Sale"
+        : product.display_badge;
+
+  const quick = {
+    id: product.id,
+    name: product.name,
+    slug: product.slug,
+    sku: product.sku,
+    kind: product.kind,
+    price: Number(product.price),
+    image: product.image,
+    sizes: product.sizes || [],
+    in_stock: product.in_stock,
+  };
+
   return (
-    <Link href={`/product/${product.slug}`} className="group block">
+    <div className="group">
       <div className="relative overflow-hidden bg-soft">
-        <ProductImage
-          src={product.image}
-          alt={product.name}
-          priority={priority}
-          className="aspect-[4/5] w-full object-cover transition duration-500 group-hover:scale-105"
-        />
-        {product.image_alt && (
+        <Link href={`/product/${product.slug}`} tabIndex={-1} aria-hidden="true" className="block">
           <ProductImage
-            src={product.image_alt}
-            alt=""
-            className="absolute inset-0 aspect-[4/5] w-full object-cover opacity-0 transition duration-500 group-hover:opacity-100"
+            src={product.image}
+            alt={product.name}
+            priority={priority}
+            width={600}
+            height={900}
+            sizes={sizes}
+            className="aspect-[2/3] w-full object-cover transition duration-700 ease-out group-hover:scale-[1.03]"
           />
+          {product.image_alt && (
+            <ProductImage
+              src={product.image_alt}
+              alt=""
+              width={600}
+              height={900}
+              sizes={sizes}
+              className="absolute inset-0 aspect-[2/3] w-full object-cover opacity-0 transition duration-700 group-hover:opacity-100"
+            />
+          )}
+        </Link>
+        {badge && (
+          <span
+            className={`absolute left-3 top-3 px-3 py-1 text-xs tracking-wide ${badge === "Sold out" ? "bg-ink/80 text-white" : "bg-gold text-white"}`}
+          >
+            {badge}
+          </span>
         )}
-        <div className="absolute left-2 top-2 flex flex-col gap-1">
-          {product.kind === "package" && <span className="bg-festive px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider">Package</span>}
-          {onSale && <span className="bg-ink px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">Sale</span>}
-          {!product.in_stock && <span className="bg-white px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider">Sold out</span>}
-        </div>
+        {product.in_stock && <QuickBuy product={quick} />}
       </div>
-      <div className="mt-3 text-center">
-        <h3 className="font-sans text-sm leading-snug group-hover:text-brand-dark">{product.name}</h3>
-        <p className="mt-1 text-sm font-medium">
+      <Link href={`/product/${product.slug}`} className="mt-4 block px-1 text-center">
+        <h3 className="font-sans text-[15px] leading-snug text-ink group-hover:text-gold-dark">{product.name}</h3>
+        <p className="mt-1.5 text-[15px] font-medium tracking-wide">
           {formatNaira(product.price)}
-          {onSale && <span className="ml-2 text-muted line-through">{formatNaira(product.compare_at_price)}</span>}
+          {onSale && <span className="ml-2 font-normal text-muted line-through">{formatNaira(product.compare_at_price)}</span>}
         </p>
-      </div>
-    </Link>
+      </Link>
+    </div>
   );
 }

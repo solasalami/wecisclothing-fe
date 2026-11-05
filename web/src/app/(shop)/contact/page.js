@@ -18,13 +18,13 @@ export default async function ContactPage() {
         <p className="mx-auto mt-3 max-w-xl text-muted">Our sales representatives are happy to help with sizing, custom orders and delivery.</p>
       </div>
       <div className="mx-auto mt-10 grid max-w-4xl gap-4 sm:grid-cols-3">
-        <a href={telLink(store.phone)} data-track-location="contact_page" className="flex flex-col items-center gap-2 border border-line p-6 hover:border-ink">
+        <a href={telLink(store.phone)} data-track-location="contact_page" className="flex flex-col items-center gap-2 border border-line p-6 hover:border-gold">
           <PhoneIcon /> <span className="font-medium">Call sales</span> <span className="text-sm text-muted">{store.phone}</span>
         </a>
         <a href={whatsappLink(store.whatsapp, store.whatsapp_message)} target="_blank" rel="noopener noreferrer" data-track-location="contact_page" className="flex flex-col items-center gap-2 border border-line p-6 hover:border-whatsapp">
           <WhatsAppIcon className="text-whatsapp" /> <span className="font-medium">WhatsApp</span> <span className="text-sm text-muted">{store.whatsapp}</span>
         </a>
-        <a href={`mailto:${store.email}`} className="flex flex-col items-center gap-2 border border-line p-6 hover:border-ink">
+        <a href={`mailto:${store.email}`} className="flex flex-col items-center gap-2 border border-line p-6 hover:border-gold">
           <MailIcon /> <span className="font-medium">Email</span> <span className="text-sm text-muted">{store.email}</span>
         </a>
       </div>

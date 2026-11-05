@@ -2,7 +2,7 @@ import Link from "next/link";
 import { telLink, whatsappLink } from "@/lib/format";
 import { PinIcon, PhoneIcon, MailIcon, WhatsAppIcon, ClockIcon } from "./icons";
 
-export default function Footer({ store, showrooms, categories, pages }) {
+export default function Footer({ store, showrooms, categories, pages, campaign }) {
   return (
     <footer className="mt-20 bg-ink text-sm text-white/80">
       {/* Showrooms strip */}
@@ -10,7 +10,7 @@ export default function Footer({ store, showrooms, categories, pages }) {
         <div className="mx-auto grid max-w-7xl gap-6 px-4 py-10 md:grid-cols-2">
           {showrooms.map((s) => (
             <div key={s.id} className="flex gap-4">
-              <PinIcon className="mt-1 flex-none text-brand" />
+              <PinIcon className="mt-1 flex-none text-gold" />
               <div>
                 <h3 className="font-display text-lg text-white">{s.name}</h3>
                 <p>{s.address}</p>
@@ -21,7 +21,7 @@ export default function Footer({ store, showrooms, categories, pages }) {
                 )}
                 <div className="mt-2 flex flex-wrap gap-4">
                   {s.phone && (
-                    <a href={telLink(s.phone)} data-track-location={`footer_showroom_${s.id}`} className="text-brand hover:underline">
+                    <a href={telLink(s.phone)} data-track-location={`footer_showroom_${s.id}`} className="text-gold hover:underline">
                       Call {s.phone}
                     </a>
                   )}
@@ -43,34 +43,34 @@ export default function Footer({ store, showrooms, categories, pages }) {
           <p className="leading-relaxed">{store.tagline}. Est. 2015.</p>
         </div>
         <div>
-          <h4 className="mb-4 text-xs font-bold uppercase tracking-widest text-white">Shop</h4>
+          <h4 className="mb-4 text-xs font-medium uppercase tracking-[0.2em] text-gold">Shop</h4>
           <ul className="space-y-2">
             {categories.map((c) => (
               <li key={c.slug}>
-                <Link href={`/category/${c.slug}`} className="hover:text-brand">{c.name}</Link>
+                <Link href={`/category/${c.slug}`} className="hover:text-gold">{c.name}</Link>
               </li>
             ))}
-            <li><Link href="/detty-december" className="hover:text-brand">Detty December</Link></li>
-            <li><Link href="/shop" className="hover:text-brand">All products</Link></li>
+            {campaign && <li><Link href={`/${campaign.slug}`} className="hover:text-gold">{campaign.name}</Link></li>}
+            <li><Link href="/shop" className="hover:text-gold">All products</Link></li>
           </ul>
         </div>
         <div>
-          <h4 className="mb-4 text-xs font-bold uppercase tracking-widest text-white">Information</h4>
+          <h4 className="mb-4 text-xs font-medium uppercase tracking-[0.2em] text-gold">Information</h4>
           <ul className="space-y-2">
             {pages.map((p) => (
               <li key={p.slug}>
-                <Link href={`/pages/${p.slug}`} className="hover:text-brand">{p.title}</Link>
+                <Link href={`/pages/${p.slug}`} className="hover:text-gold">{p.title}</Link>
               </li>
             ))}
-            <li><Link href="/contact" className="hover:text-brand">Contact &amp; showrooms</Link></li>
-            <li><Link href="/account" className="hover:text-brand">My account</Link></li>
+            <li><Link href="/contact" className="hover:text-gold">Contact &amp; showrooms</Link></li>
+            <li><Link href="/account" className="hover:text-gold">My account</Link></li>
           </ul>
         </div>
         <div>
-          <h4 className="mb-4 text-xs font-bold uppercase tracking-widest text-white">Talk to sales</h4>
+          <h4 className="mb-4 text-xs font-medium uppercase tracking-[0.2em] text-gold">Talk to sales</h4>
           <ul className="space-y-3">
             <li>
-              <a href={telLink(store.phone)} data-track-location="footer" className="flex items-center gap-2 hover:text-brand">
+              <a href={telLink(store.phone)} data-track-location="footer" className="flex items-center gap-2 hover:text-gold">
                 <PhoneIcon width={16} height={16} /> {store.phone}
               </a>
             </li>
@@ -80,13 +80,13 @@ export default function Footer({ store, showrooms, categories, pages }) {
                 target="_blank"
                 rel="noopener noreferrer"
                 data-track-location="footer"
-                className="flex items-center gap-2 hover:text-brand"
+                className="flex items-center gap-2 hover:text-gold"
               >
                 <WhatsAppIcon width={16} height={16} /> WhatsApp {store.whatsapp}
               </a>
             </li>
             <li>
-              <a href={`mailto:${store.email}`} className="flex items-center gap-2 hover:text-brand">
+              <a href={`mailto:${store.email}`} className="flex items-center gap-2 hover:text-gold">
                 <MailIcon width={16} height={16} /> {store.email}
               </a>
             </li>

@@ -27,7 +27,7 @@ export default function CartDrawer() {
                 <li key={l.key} className="flex gap-4">
                   <ProductImage src={l.image} alt={l.name} className="h-24 w-20 flex-none object-cover" width={80} height={96} />
                   <div className="flex-1 text-sm">
-                    <Link href={`/product/${l.slug}`} onClick={() => setDrawerOpen(false)} className="font-medium hover:text-brand-dark">
+                    <Link href={`/product/${l.slug}`} onClick={() => setDrawerOpen(false)} className="font-medium hover:text-gold-dark">
                       {l.name}
                     </Link>
                     {l.size && <p className="text-muted">Size: {l.size}</p>}

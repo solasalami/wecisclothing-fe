@@ -1,7 +1,7 @@
 import "server-only";
 import crypto from "node:crypto";
 import { query, queryOne, transaction } from "./db";
-import { getProductsByIds } from "./catalog";
+import { getProductsByIds, packagesAvailable } from "./catalog";
 
 export const DELIVERY_METHODS = {
   delivery_lagos: "Home delivery — Lagos",
@@ -35,11 +35,12 @@ export async function priceCart(lines) {
     .slice(0, 50);
   const products = await getProductsByIds([...new Set(clean.map((l) => l.productId))]);
   const byId = new Map(products.map((p) => [p.id, p]));
+  const packagesOk = await packagesAvailable();
   const items = [];
   const problems = [];
   for (const l of clean) {
     const p = byId.get(l.productId);
-    if (!p || !p.is_active) {
+    if (!p || !p.is_active || (p.kind === "package" && !packagesOk)) {
       problems.push(`An item in your cart is no longer available.`);
       continue;
     }

@@ -66,7 +66,7 @@ export default async function OrderSuccessPage({ params, searchParams }) {
       {paid && <p className="mt-4 text-muted">We&apos;ve received your payment of {formatNaira(order.total)}. Our team will contact you on {order.phone} shortly.</p>}
 
       {!paid && order.payment_method === "bank_transfer" && (
-        <div className="mt-6 border border-ink p-5">
+        <div className="mt-6 border border-gold bg-gold-light/40 p-5">
           <p className="font-medium">Please transfer {formatNaira(order.total)} to:</p>
           <pre className="mt-3 whitespace-pre-wrap font-sans text-sm">{payments.bank_transfer_details}</pre>
           <p className="mt-3 text-sm">Use <strong>{order.order_number}</strong> as your reference, then send your receipt on WhatsApp.</p>

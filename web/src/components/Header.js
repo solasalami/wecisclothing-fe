@@ -6,8 +6,10 @@ import { usePathname, useRouter } from "next/navigation";
 import { useCart } from "./CartProvider";
 import { BagIcon, MenuIcon, CloseIcon, UserIcon, SearchIcon, PhoneIcon, WhatsAppIcon } from "./icons";
 import { telLink, whatsappLink } from "@/lib/format";
+import { isCampaignLive } from "@/lib/campaign";
 
 export default function Header({ categories, store, campaign }) {
+  const campaignLive = isCampaignLive(campaign);
   const { count, ready, setDrawerOpen } = useCart();
   const [open, setOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -17,7 +19,7 @@ export default function Header({ categories, store, campaign }) {
 
   const nav = [
     ...categories.filter((c) => c.show_in_menu).map((c) => ({ href: `/category/${c.slug}`, label: c.name, children: c.children.filter((x) => x.show_in_menu && x.count > 0) })),
-    ...(campaign.enabled ? [{ href: `/${campaign.slug}`, label: "Detty December", festive: true, children: [] }] : []),
+    ...(campaignLive ? [{ href: `/${campaign.slug}`, label: campaign.name, festive: true, children: [] }] : []),
     { href: "/shop", label: "Shop All", children: [] },
     { href: "/contact", label: "Showrooms", children: [] },
   ];
@@ -31,34 +33,36 @@ export default function Header({ categories, store, campaign }) {
 
   return (
     <header className="sticky top-0 z-40 bg-white shadow-sm">
-      {/* Contact bar */}
-      <div className="bg-ink text-xs text-white">
+      {/* Single champagne utility bar: contact · campaign announcement · showrooms */}
+      <div className="border-b border-gold/30 bg-gold-light text-[11px] tracking-[0.08em] text-ink sm:text-xs">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-2">
-          <div className="flex items-center gap-4">
-            <a href={telLink(store.phone)} data-track-location="top_bar" className="flex items-center gap-1.5 hover:text-brand">
-              <PhoneIcon width={14} height={14} /> <span>{store.phone}</span>
+          <div className="flex flex-none items-center gap-3 sm:gap-4">
+            <a href={telLink(store.phone)} data-track-location="top_bar" aria-label={`Call ${store.phone}`} className="flex items-center gap-1.5 hover:text-gold-dark">
+              <PhoneIcon width={14} height={14} /> <span className="hidden sm:inline">{store.phone}</span>
             </a>
             <a
               href={whatsappLink(store.whatsapp, store.whatsapp_message)}
               target="_blank"
               rel="noopener noreferrer"
               data-track-location="top_bar"
-              className="flex items-center gap-1.5 text-whatsapp hover:brightness-110"
+              aria-label="WhatsApp us"
+              className="flex items-center gap-1.5 hover:text-gold-dark"
             >
-              <WhatsAppIcon width={14} height={14} /> <span className="hidden sm:inline">WhatsApp us</span>
+              <WhatsAppIcon width={14} height={14} className="text-whatsapp" /> <span className="hidden lg:inline">WhatsApp us</span>
             </a>
           </div>
-          <Link href="/contact" className="hidden hover:text-brand md:block">
-            Showrooms: Ikeja &amp; Victoria Island, Lagos
+          {campaignLive && campaign.show_announcement && campaign.announcement ? (
+            <Link href={`/${campaign.slug}`} className="line-clamp-2 min-w-0 flex-1 text-center font-medium leading-snug hover:text-gold-dark sm:truncate">
+              <span className="text-gold-dark">✦</span> {campaign.announcement} <span className="underline underline-offset-2">Shop now</span>
+            </Link>
+          ) : (
+            <span className="flex-1" />
+          )}
+          <Link href="/contact" className="hidden flex-none hover:text-gold-dark xl:block">
+            Showrooms: Ikeja &amp; Victoria Island
           </Link>
         </div>
       </div>
-
-      {campaign.enabled && campaign.show_announcement && campaign.announcement && (
-        <Link href={`/${campaign.slug}`} className="block bg-festive px-4 py-2 text-center text-xs font-medium text-black sm:text-sm">
-          ✨ {campaign.announcement} <span className="underline">Shop now</span>
-        </Link>
-      )}
 
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3">
         <button className="p-1 lg:hidden" onClick={() => setOpen(true)} aria-label="Open menu">
@@ -67,7 +71,7 @@ export default function Header({ categories, store, campaign }) {
 
         <Link href="/" className="flex items-center gap-2" aria-label="Wecis Clothing home">
           <Image src="/logo.png" alt="Wecis Clothing" width={56} height={54} priority className="h-12 w-auto" />
-          <span className="hidden font-display text-xl tracking-wide sm:inline">WECIS CLOTHING</span>
+          <span className="hidden font-display text-2xl tracking-[0.12em] sm:inline">WECIS CLOTHING</span>
         </Link>
 
         <nav className="hidden items-center gap-6 lg:flex">
@@ -75,16 +79,16 @@ export default function Header({ categories, store, campaign }) {
             <div key={item.href} className="group relative">
               <Link
                 href={item.href}
-                className={`py-4 text-sm font-medium uppercase tracking-wider transition hover:text-brand-dark ${
-                  item.festive ? "text-festive-dark" : ""
-                } ${pathname === item.href ? "text-brand-dark" : ""}`}
+                className={`py-4 text-xs font-medium uppercase tracking-[0.18em] transition hover:text-gold-dark ${
+                  item.festive ? "text-gold-dark" : ""
+                } ${pathname === item.href ? "text-gold-dark" : ""}`}
               >
                 {item.label}
               </Link>
               {item.children?.length > 0 && (
                 <div className="invisible absolute left-0 top-full min-w-56 border border-line bg-white py-2 opacity-0 shadow-lg transition group-hover:visible group-hover:opacity-100">
                   {item.children.map((c) => (
-                    <Link key={c.slug} href={`/category/${c.slug}`} className="block px-4 py-2 text-sm hover:bg-soft hover:text-brand-dark">
+                    <Link key={c.slug} href={`/category/${c.slug}`} className="block px-4 py-2 text-sm hover:bg-soft hover:text-gold-dark">
                       {c.name}
                     </Link>
                   ))}
@@ -95,16 +99,16 @@ export default function Header({ categories, store, campaign }) {
         </nav>
 
         <div className="flex items-center gap-3">
-          <button onClick={() => setSearchOpen((v) => !v)} aria-label="Search" className="p-1 hover:text-brand-dark">
+          <button onClick={() => setSearchOpen((v) => !v)} aria-label="Search" className="p-1 hover:text-gold-dark">
             <SearchIcon />
           </button>
-          <Link href="/account" aria-label="My account" className="hidden p-1 hover:text-brand-dark sm:block">
+          <Link href="/account" aria-label="My account" className="hidden p-1 hover:text-gold-dark sm:block">
             <UserIcon />
           </Link>
-          <button onClick={() => setDrawerOpen(true)} aria-label="Open cart" className="relative p-1 hover:text-brand-dark">
+          <button onClick={() => setDrawerOpen(true)} aria-label="Open cart" className="relative p-1 hover:text-gold-dark">
             <BagIcon />
             {ready && count > 0 && (
-              <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-brand px-1 text-[11px] font-bold text-ink">
+              <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-gold px-1 text-[11px] font-semibold text-ink">
                 {count}
               </span>
             )}
@@ -138,7 +142,7 @@ export default function Header({ categories, store, campaign }) {
             <nav className="space-y-1">
               {nav.map((item) => (
                 <div key={item.href} className="border-b border-line py-2">
-                  <Link href={item.href} className={`block py-1 font-medium uppercase tracking-wider ${item.festive ? "text-festive-dark" : ""}`}>
+                  <Link href={item.href} className={`block py-1 font-medium uppercase tracking-wider ${item.festive ? "text-gold-dark" : ""}`}>
                     {item.label}
                   </Link>
                   {item.children?.length > 0 && (

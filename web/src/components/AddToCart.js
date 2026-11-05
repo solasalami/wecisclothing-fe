@@ -26,7 +26,7 @@ export default function AddToCart({ product }) {
   }
 
   if (!product.in_stock) {
-    return <p className="mt-6 border border-line bg-soft p-4 text-sm">This item is currently sold out. Message us on WhatsApp to request it.</p>;
+    return <p className="mt-6 border border-line bg-soft p-4 text-sm">This item is currently unavailable. Message us on WhatsApp to request it.</p>;
   }
 
   return (
@@ -40,7 +40,7 @@ export default function AddToCart({ product }) {
                 key={s}
                 type="button"
                 onClick={() => setSize(s)}
-                className={`min-w-12 border px-3 py-2 text-sm transition ${size === s ? "border-ink bg-ink text-white" : "border-line hover:border-ink"}`}
+                className={`min-w-12 border px-3 py-2 text-sm transition ${size === s ? "border-gold bg-gold text-ink" : "border-line hover:border-gold"}`}
               >
                 {s}
               </button>

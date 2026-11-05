@@ -1,5 +1,6 @@
 "use server";
 import { z } from "zod";
+import { unstable_rethrow } from "next/navigation";
 import { getSettings } from "@/lib/settings";
 import { getCustomer } from "@/lib/auth";
 import { priceCart, shippingFee, createOrder, getOrderByNumber, orderAccessToken, checkOrderAccessToken, DELIVERY_METHODS } from "@/lib/orders";
@@ -86,6 +87,7 @@ export async function placeOrder(input) {
     const url = await startOnlinePayment(full);
     return { ok: true, redirect: url, orderNumber: order.order_number };
   } catch (err) {
+    unstable_rethrow(err);
     console.error("Payment init failed", err);
     // Order exists; let the shopper retry payment from the order page.
     return { ok: true, redirect: `/checkout/success/${order.order_number}?t=${token}&payment=error` };
@@ -99,6 +101,7 @@ export async function retryPayment(orderNumber, token) {
   try {
     return { ok: true, redirect: await startOnlinePayment(order) };
   } catch (err) {
+    unstable_rethrow(err);
     console.error(err);
     return { ok: false, error: "Could not reach the payment gateway. Please try again or contact us on WhatsApp." };
   }

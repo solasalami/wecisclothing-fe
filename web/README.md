@@ -7,7 +7,7 @@ A replacement for the OpenCart 3 site at wecisclothing.com. It's built with **Ne
 | Area | Details |
 |---|---|
 | Storefront | Home (banner slider, Men/Women, Detty December, featured), category pages (nested), product pages (gallery, sizes, WhatsApp enquiry, JSON-LD), search, bag drawer, checkout, order confirmation, customer accounts, info pages, contact/showrooms, sitemap and robots |
-| Detty December | `/detty-december` landing page with hero, countdown, packages, and a WhatsApp/call/showroom section. An announcement bar runs across the site. Everything is editable from **Admin → Detty December** |
+| Seasonal campaign | A reusable campaign (currently **Detty December** at `/detty-december`). It has a landing page with hero, countdown, packages and a WhatsApp/call/showroom section, plus a menu item, an announcement bar and a homepage section. Name, URL, all wording, hero image and **start/end dates** are set in **Admin → Seasonal campaign**. It turns on and off on schedule, old URLs redirect, admins can preview it before launch, and packages can be hidden and stop selling outside the campaign |
 | Admin (`/admin`) | Dashboard and launch checklist, orders (status, mark bank transfers as paid), products and packages (photo upload, reorder, sizes, stock), categories, customers, home banners, showrooms, info pages, settings (contact, delivery fees, payments, GTM), admin users (owner/staff) |
 | Payments | OPay Cashier redirect. Payment is **verified server-side** (status API and signed callback) and amounts are checked against the order. Optional bank transfer. A dev-only mock gateway lets you test without OPay keys |
 | Tracking | GA4 ecommerce events in `dataLayer`: `view_item`, `add_to_cart`, `remove_from_cart`, `view_cart`, `begin_checkout`, `add_shipping_info`, `add_payment_info`, `purchase` (once per order), plus `whatsapp_click` and `phone_click`. See [docs/TRACKING.md](docs/TRACKING.md) |
@@ -62,7 +62,18 @@ With `PAYMENT_MOCK=true` (dev only) checkout sends you to a **simulated OPay pag
 - **Sizes** default to S–XXL, and stock tracking is off (made to order). Adjust per product.
 - **Showroom opening hours** and **bank transfer details** (Settings) are blank.
 - **Delivery fees** default to ₦5,000 in Lagos and ₦10,000 outside Lagos.
-- **Detty December packages.** Admin → Detty December → **+ New package**.
+- **Seasonal campaign.** Admin → Seasonal campaign. Check the dates and wording, then **+ New package**. For a new season, unpublish the old packages and change the name, URL, wording and dates.
+
+## Database outages & health check
+
+If MySQL can't be reached (down, wrong credentials, too many connections, timeouts), visitors are redirected to **`/maintenance`**. It's a branded page that never touches the database:
+- **Responses:** it answers **HTTP 503 + `Retry-After`**, so search engines treat the outage as temporary.
+- **Ordering:** it offers WhatsApp/phone ordering and the showroom addresses.
+- **Recovery:** it checks **`/api/health`** every 20s and sends the visitor back to the page they were on once the database is back.
+- **Behind the scenes** (`src/lib/db.js`): a 5s connect timeout, a 6s query cap and a short circuit breaker stop pages from hanging. Outages are logged at most once every 30s as `[db] Database unavailable`.
+- **Payment webhooks:** the OPay callback answers **503** instead of redirecting, so OPay retries and no payment confirmation is lost.
+
+Point an uptime monitor (e.g. UptimeRobot or Better Stack) at `https://wecisclothing.com/api/health`. It returns 200 when healthy and 503 when the database is down.
 
 ## Project layout
 

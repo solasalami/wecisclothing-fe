@@ -33,7 +33,7 @@ export default function CartView() {
                 <ProductImage src={l.image} alt={l.name} width={96} height={120} className="h-30 w-24 flex-none object-cover" />
                 <div className="flex flex-1 flex-col justify-between gap-2 sm:flex-row">
                   <div>
-                    <Link href={`/product/${l.slug}`} className="font-medium hover:text-brand-dark">{l.name}</Link>
+                    <Link href={`/product/${l.slug}`} className="font-medium hover:text-gold-dark">{l.name}</Link>
                     {l.size && <p className="text-sm text-muted">Size: {l.size}</p>}
                     <p className="text-sm">{formatNaira(l.price)}</p>
                   </div>

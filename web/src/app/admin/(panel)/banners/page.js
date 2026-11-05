@@ -1,3 +1,4 @@
+import ImageUpload from "@/components/admin/ImageUpload";
 import Link from "next/link";
 import { query } from "@/lib/db";
 import { ActionForm, SubmitButton, ConfirmButton } from "@/components/admin/Form";
@@ -36,11 +37,15 @@ export default async function BannersAdmin({ searchParams }) {
           <ActionForm action={saveBanner} className="space-y-4" key={current?.id || "new"}>
             <input type="hidden" name="id" value={current?.id || ""} />
             <div>
-              <span className="label">Image (1800×718 recommended)</span>
-              <input type="file" name="image" accept="image/jpeg,image/png,image/webp" className="text-sm" required={!current} />
+              <span className="label">Banner image</span>
+              {current?.image && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={current.image} alt="" className="mb-2 w-full border border-line object-cover" style={{ aspectRatio: "1800/718" }} />
+              )}
+              <ImageUpload name="image" required={!current} buttonLabel={current ? "Replace image" : "Choose image"} hint="Wide image, 1800×718 recommended · JPG, PNG or WebP up to 8 MB" compact />
             </div>
             <Field label="Title (for accessibility)" name="title" defaultValue={current?.title || ""} />
-            <Field label="Link" name="link" defaultValue={current?.link || ""} placeholder="/detty-december" />
+            <Field label="Link" name="link" defaultValue={current?.link || ""} placeholder="/shop or /category/men" />
             <Field label="Caption (optional)" name="subtitle" defaultValue={current?.subtitle || ""} />
             <Field label="Button label (optional)" name="button_label" defaultValue={current?.button_label || ""} placeholder="Shop now" />
             <Field label="Sort order" name="sort_order" type="number" defaultValue={current?.sort_order || 0} />

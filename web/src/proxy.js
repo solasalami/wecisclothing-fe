@@ -1,23 +1,38 @@
 import { NextResponse } from "next/server";
 import { jwtVerify } from "jose";
 
-// Optimistic gate for /admin. Every admin page and action re-checks the session
-// against the database (requireAdmin) — this only avoids rendering for strangers.
+// 1. Tags every page request with its path (x-wecis-path) so that, if the
+//    database goes down, the maintenance page can send visitors back afterwards.
+// 2. Optimistic gate for /admin. Every admin page and action still re-checks
+//    the session against the database (requireAdmin).
 export async function proxy(request) {
-  const { pathname } = request.nextUrl;
-  if (pathname === "/admin/login") return NextResponse.next();
-  const token = request.cookies.get("wecis_admin")?.value;
-  try {
-    if (!token) throw new Error("no token");
-    const { payload } = await jwtVerify(token, new TextEncoder().encode(process.env.AUTH_SECRET));
-    if (payload.kind !== "admin") throw new Error("bad kind");
-    return NextResponse.next();
-  } catch {
-    const url = request.nextUrl.clone();
-    url.pathname = "/admin/login";
-    url.search = "";
-    return NextResponse.redirect(url);
+  const { pathname, search } = request.nextUrl;
+
+  if (pathname.startsWith("/admin") && pathname !== "/admin/login") {
+    const token = request.cookies.get("wecis_admin")?.value;
+    let ok = false;
+    try {
+      if (token) {
+        const { payload } = await jwtVerify(token, new TextEncoder().encode(process.env.AUTH_SECRET));
+        ok = payload.kind === "admin";
+      }
+    } catch {
+      ok = false;
+    }
+    if (!ok) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/admin/login";
+      url.search = "";
+      return NextResponse.redirect(url);
+    }
   }
+
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-wecis-path", `${pathname}${search}`.slice(0, 500));
+  return NextResponse.next({ request: { headers: requestHeaders } });
 }
 
-export const config = { matcher: ["/admin", "/admin/:path*"] };
+export const config = {
+  // Pages only: skip static assets, images, uploads, health checks and webhooks.
+  matcher: ["/((?!_next/|media/|api/|maintenance|favicon.ico|icon.png|logo.png|robots.txt|sitemap.xml).*)"],
+};

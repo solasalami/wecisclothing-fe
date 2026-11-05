@@ -3,14 +3,17 @@ import Image from "next/image";
 import { getBanners, listProducts, getCategoryTree, getShowrooms } from "@/lib/catalog";
 import { getSettings } from "@/lib/settings";
 import ProductGrid from "@/components/ProductGrid";
+import ProductCard from "@/components/ProductCard";
+import ProductCarousel, { CarouselItem } from "@/components/ProductCarousel";
 import HeroSlider from "@/components/HeroSlider";
 import ShowroomCards from "@/components/ShowroomCards";
+import { isCampaignLive } from "@/lib/campaign";
 
 export default async function HomePage() {
   const [banners, featured, newest, packages, categories, showrooms, settings] = await Promise.all([
     getBanners("home_hero"),
-    listProducts({ featured: true, limit: 8 }),
-    listProducts({ sort: "newest", kind: "product", limit: 8 }),
+    listProducts({ featured: true, limit: 12 }),
+    listProducts({ sort: "newest", kind: "product", limit: 12 }),
     listProducts({ kind: "package", limit: 4 }),
     getCategoryTree(),
     getShowrooms(),
@@ -36,14 +39,15 @@ export default async function HomePage() {
         ))}
       </section>
 
-      {campaign.enabled && (
+      {isCampaignLive(campaign) && campaign.show_on_home && (
         <section className="mx-auto mt-16 max-w-7xl px-4">
-          <div className="bg-gradient-to-r from-black via-[#1a1405] to-black px-6 py-12 text-center text-white">
-            <p className="text-xs uppercase tracking-[0.3em] text-festive">Limited season collection</p>
-            <h2 className="mt-3 text-4xl md:text-5xl">{campaign.title}</h2>
-            <p className="mx-auto mt-4 max-w-2xl text-white/80">{campaign.subtitle}</p>
-            <Link href={`/${campaign.slug}`} className="btn-festive mt-8">
-              Explore festive packages
+          <div className="relative border border-gold/50 bg-gold-light px-6 py-14 text-center">
+            <div className="pointer-events-none absolute inset-2 border border-gold/30" aria-hidden="true" />
+            {campaign.home_eyebrow && <p className="text-xs uppercase tracking-[0.3em] text-gold-dark">{campaign.home_eyebrow}</p>}
+            <h2 className="mt-3 text-4xl text-ink md:text-5xl">{campaign.title}</h2>
+            <p className="mx-auto mt-4 max-w-2xl text-ink/70">{campaign.subtitle}</p>
+            <Link href={`/${campaign.slug}`} className="btn-primary relative mt-8">
+              {campaign.home_cta || `Shop ${campaign.name}`}
             </Link>
           </div>
           {packages.items.length > 0 && (
@@ -54,15 +58,20 @@ export default async function HomePage() {
         </section>
       )}
 
-      <section className="mx-auto mt-16 max-w-7xl px-4">
+      <section className="mx-auto mt-20 max-w-[1500px] px-4 md:px-8">
         <div className="mb-8 text-center">
           <h2 className="text-3xl md:text-4xl">{featured.items.length ? "Featured styles" : "New arrivals"}</h2>
-          <p className="mt-2 text-muted">Handcrafted African-inspired pieces, made in Lagos.</p>
+          <Link href="/shop" className="mt-3 inline-block border-b border-transparent text-xs font-medium uppercase tracking-[0.2em] text-gold-dark hover:border-gold-dark">
+            View all
+          </Link>
         </div>
-        <ProductGrid products={highlight} priorityCount={4} />
-        <div className="mt-10 text-center">
-          <Link href="/shop" className="btn-outline">View all products</Link>
-        </div>
+        <ProductCarousel label="Featured styles">
+          {highlight.map((p, i) => (
+            <CarouselItem key={p.id}>
+              <ProductCard product={p} priority={i < 4} sizes="(max-width: 640px) 72vw, (max-width: 1024px) 42vw, 23vw" />
+            </CarouselItem>
+          ))}
+        </ProductCarousel>
       </section>
 
       <section className="mx-auto mt-20 max-w-7xl px-4">

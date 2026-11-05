@@ -29,7 +29,7 @@ export default function Listing({ basePath, title, intro, subcategories = [], re
       {subcategories.length > 0 && (
         <div className="mb-8 flex flex-wrap justify-center gap-2">
           {subcategories.map((c) => (
-            <Link key={c.slug} href={`/category/${c.slug}`} className="border border-line px-3 py-1.5 text-xs uppercase tracking-wider hover:border-ink">
+            <Link key={c.slug} href={`/category/${c.slug}`} className="border border-line px-3 py-1.5 text-xs uppercase tracking-[0.15em] hover:border-gold">
               {c.name}
             </Link>
           ))}
@@ -43,14 +43,14 @@ export default function Listing({ basePath, title, intro, subcategories = [], re
           <select id="sort" name="sort" defaultValue={sort || "default"} className="border border-line bg-white px-2 py-1.5">
             {SORT_OPTIONS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
           </select>
-          <button className="border border-ink px-3 py-1.5 text-xs uppercase">Apply</button>
+          <button className="border border-gold px-3 py-1.5 text-xs uppercase tracking-[0.15em] hover:bg-gold">Apply</button>
         </form>
       </div>
       <ProductGrid products={result.items} priorityCount={4} />
       {pages > 1 && (
         <nav className="mt-12 flex justify-center gap-2" aria-label="Pagination">
           {Array.from({ length: pages }, (_, i) => i + 1).map((p) => (
-            <Link key={p} href={qs(p)} className={`flex h-10 w-10 items-center justify-center border ${p === page ? "border-ink bg-ink text-white" : "border-line"}`}>
+            <Link key={p} href={qs(p)} className={`flex h-10 w-10 items-center justify-center border ${p === page ? "border-gold bg-gold text-ink" : "border-line"}`}>
               {p}
             </Link>
           ))}

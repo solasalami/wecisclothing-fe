@@ -4,6 +4,7 @@ import { formatNaira } from "@/lib/format";
 import OrdersTable from "@/components/admin/OrdersTable";
 import { opayConfigured } from "@/lib/opay";
 import { getSettings } from "@/lib/settings";
+import { campaignStatus } from "@/lib/campaign";
 
 export const metadata = { title: "Dashboard" };
 
@@ -19,7 +20,7 @@ export default async function Dashboard() {
   const checks = [
     [opayConfigured(), "OPay keys configured", "Add OPAY_MERCHANT_ID / OPAY_PUBLIC_KEY / OPAY_SECRET_KEY in Netlify environment variables."],
     [!!settings.tracking.gtm_id, "Google Tag Manager installed", "Add your GTM container ID in Settings."],
-    [settings.campaign.enabled, "Detty December page live", "Enable it under Detty December."],
+    [campaignStatus(settings.campaign) === "live", `${settings.campaign.name} campaign live`, `Status: ${campaignStatus(settings.campaign)} — manage it under Seasonal campaign.`],
   ];
   return (
     <div className="space-y-8">

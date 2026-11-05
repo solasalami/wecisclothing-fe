@@ -7,6 +7,7 @@ import CartDrawer from "@/components/CartDrawer";
 import WhatsAppButton from "@/components/WhatsAppButton";
 import TrackingListener from "@/components/TrackingListener";
 import { GtmHead, GtmNoScript } from "@/components/Gtm";
+import { isCampaignLive } from "@/lib/campaign";
 
 export const dynamic = "force-dynamic";
 
@@ -26,7 +27,7 @@ export default async function ShopLayout({ children }) {
       <TrackingListener />
       <Header categories={categories} store={store} campaign={campaign} />
       <main>{children}</main>
-      <Footer store={store} showrooms={showrooms} categories={categories} pages={pages} />
+      <Footer store={store} showrooms={showrooms} categories={categories} pages={pages} campaign={isCampaignLive(campaign) ? campaign : null} />
       <CartDrawer />
       <WhatsAppButton phone={store.whatsapp} message={store.whatsapp_message} />
     </CartProvider>

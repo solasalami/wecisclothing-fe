@@ -25,7 +25,7 @@ export default async function ProductsAdmin({ searchParams }) {
     <div>
       <PageHeader title="Products">
         <Link href="/admin/products/new" className="btn-primary">Add product</Link>
-        <Link href="/admin/products/new?kind=package" className="btn-festive">Add package</Link>
+        <Link href="/admin/products/new?kind=package" className="btn-outline">Add package</Link>
       </PageHeader>
       <form className="mb-4 flex flex-wrap gap-2">
         <input name="q" defaultValue={sp.q || ""} placeholder="Search name or SKU" className="input max-w-xs" />

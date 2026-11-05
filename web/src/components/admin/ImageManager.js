@@ -1,10 +1,10 @@
 "use client";
 import { useState } from "react";
+import ImageUpload from "./ImageUpload";
 
 /** Existing product images (reorder / remove) + new uploads with previews. */
 export default function ImageManager({ images = [] }) {
   const [items, setItems] = useState(images.map((i) => ({ ...i, removed: false })));
-  const [previews, setPreviews] = useState([]);
 
   const move = (idx, dir) => {
     const next = [...items];
@@ -42,25 +42,13 @@ export default function ImageManager({ images = [] }) {
           ))}
         </div>
       )}
-      <label className="label" htmlFor="images">Add photos</label>
-      <input
-        id="images"
+      <span className="label">Add photos</span>
+      <ImageUpload
         name="images"
-        type="file"
         multiple
-        accept="image/jpeg,image/png,image/webp"
-        className="block w-full text-sm"
-        onChange={(e) => setPreviews([...e.target.files].map((f) => URL.createObjectURL(f)))}
+        buttonLabel="Choose photos"
+        hint="JPG, PNG or WebP, up to 8 MB each · portrait 4:5 (e.g. 1200×1500) looks best · the first photo is the main image"
       />
-      <p className="mt-1 text-xs text-muted">JPG, PNG or WebP, up to 8MB each. Portrait 4:5 (e.g. 1200×1500) looks best. The first photo is the main image.</p>
-      {previews.length > 0 && (
-        <div className="mt-3 grid grid-cols-4 gap-2">
-          {previews.map((p) => (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img key={p} src={p} alt="" className="aspect-[4/5] w-full object-cover" />
-          ))}
-        </div>
-      )}
     </div>
   );
 }

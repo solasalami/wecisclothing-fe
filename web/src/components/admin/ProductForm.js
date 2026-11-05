@@ -4,19 +4,11 @@ import { Field, TextArea, Check, Card } from "./Fields";
 import RichText from "./RichText";
 import ImageManager from "./ImageManager";
 import { saveProduct } from "@/app/admin/actions";
+import { CategoryPicker } from "./CategoryTree";
 
-function flatten(tree, depth = 0, out = []) {
-  for (const c of tree) {
-    out.push({ id: c.id, name: `${"— ".repeat(depth)}${c.name}` });
-    flatten(c.children || [], depth + 1, out);
-  }
-  return out;
-}
-
-export default function ProductForm({ product, categories, kind = "product" }) {
-  const p = product || { kind, is_active: 1, sizes: kind === "package" ? [] : ["S", "M", "L", "XL", "XXL"], images: [], categoryIds: [], package_items: [] };
+export default function ProductForm({ product, categories, kind = "product", defaultBadge = "" }) {
+  const p = product || { kind, badge: defaultBadge, is_active: 1, sizes: kind === "package" ? [] : ["S", "M", "L", "XL", "XXL"], images: [], categoryIds: [], package_items: [] };
   const isPackage = (p.kind || kind) === "package";
-  const flat = flatten(categories);
   return (
     <ActionForm action={saveProduct} className="grid gap-6 xl:grid-cols-[1fr_340px]">
       <input type="hidden" name="id" value={p.id || ""} />
@@ -52,6 +44,10 @@ export default function ProductForm({ product, categories, kind = "product" }) {
         <Card title="Publish">
           <Check label="Visible on website" name="is_active" defaultChecked={p.is_active} />
           <Check label="Feature on homepage" name="is_featured" defaultChecked={p.is_featured} />
+          <Field label="Badge (optional)" name="badge" defaultValue={p.badge || ""} list="badge-suggestions" placeholder="e.g. New arrival" hint="Shown on the product photo. Blank = automatic “New arrival” for 45 days." />
+          <datalist id="badge-suggestions">
+            {["New arrival", "Bestseller", "Limited edition", "Back in stock", "Pre-order"].map((b) => <option key={b} value={b} />)}
+          </datalist>
           <Field label="Sort order" name="sort_order" type="number" defaultValue={p.sort_order || 0} hint="Lower numbers show first." />
           <SubmitButton className="btn-primary w-full">{p.id ? "Save changes" : isPackage ? "Publish package" : "Create product"}</SubmitButton>
           {p.id && (
@@ -74,14 +70,7 @@ export default function ProductForm({ product, categories, kind = "product" }) {
         </Card>
 
         <Card title="Categories">
-          <div className="max-h-72 space-y-1 overflow-y-auto">
-            {flat.map((c) => (
-              <label key={c.id} className="flex items-center gap-2 text-sm">
-                <input type="checkbox" name="categories" value={c.id} defaultChecked={p.categoryIds.includes(c.id)} />
-                {c.name}
-              </label>
-            ))}
-          </div>
+          <CategoryPicker tree={categories} defaultChecked={p.categoryIds} />
         </Card>
       </div>
     </ActionForm>

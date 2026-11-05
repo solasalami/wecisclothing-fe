@@ -1,8 +1,9 @@
 "use client";
 import { useEffect, useState } from "react";
 
-export default function Countdown({ endsAt }) {
-  const end = new Date(`${endsAt}T23:59:59+01:00`).getTime();
+/** @param {{ endsAt: number, tone?: "light"|"dark" }} props  endsAt = epoch ms */
+export default function Countdown({ endsAt, tone = "light" }) {
+  const end = endsAt;
   const [now, setNow] = useState(null);
   useEffect(() => {
     const tick = () => setNow(Date.now());
@@ -19,9 +20,9 @@ export default function Countdown({ endsAt }) {
   return (
     <div className="inline-flex gap-3" aria-label="Time left in the campaign">
       {parts.map(([l, v]) => (
-        <div key={l} className="min-w-16 border border-festive/50 px-3 py-2">
-          <div className="font-display text-2xl text-festive">{String(v).padStart(2, "0")}</div>
-          <div className="text-[10px] uppercase tracking-widest text-white/70">{l}</div>
+        <div key={l} className={`min-w-16 border px-3 py-2 ${tone === "dark" ? "border-gold/60" : "border-gold/50 bg-white/60"}`}>
+          <div className={`font-display text-2xl ${tone === "dark" ? "text-gold" : "text-gold-dark"}`}>{String(v).padStart(2, "0")}</div>
+          <div className={`text-[10px] uppercase tracking-widest ${tone === "dark" ? "text-white/70" : "text-ink/60"}`}>{l}</div>
         </div>
       ))}
     </div>

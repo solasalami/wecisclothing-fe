@@ -9,6 +9,7 @@ import { sanitizeHtml } from "@/lib/sanitize";
 import { slugify } from "@/lib/format";
 import { getSetting, saveSetting } from "@/lib/settings";
 import { markOrderPaid, ORDER_STATUSES } from "@/lib/orders";
+import { RESERVED_SLUGS } from "@/lib/campaign";
 
 const str = (fd, k) => String(fd.get(k) ?? "").trim();
 const num = (fd, k) => {
@@ -66,6 +67,7 @@ export async function saveProduct(_prev, fd) {
     track_stock: bool(fd, "track_stock"),
     is_active: bool(fd, "is_active"),
     is_featured: bool(fd, "is_featured"),
+    badge: str(fd, "badge").slice(0, 40) || null,
     sort_order: num(fd, "sort_order") || 0,
     meta_title: str(fd, "meta_title") || null,
     meta_description: str(fd, "meta_description") || null,
@@ -127,7 +129,7 @@ export async function deleteProduct(fd) {
   } else {
     await query("DELETE FROM products WHERE id = ?", [id]);
   }
-  redirect(fd.get("return_to") === "packages" ? "/admin/detty-december" : "/admin/products");
+  redirect(fd.get("return_to") === "packages" ? "/admin/campaign" : "/admin/products");
 }
 
 export async function toggleProduct(fd) {
@@ -143,7 +145,14 @@ export async function saveCategory(_prev, fd) {
   const name = str(fd, "name");
   if (!name) return { error: "Name is required" };
   const parentId = Number(fd.get("parent_id")) || null;
-  if (parentId && parentId === id) return { error: "A category cannot be its own parent" };
+  if (parentId && id) {
+    // Walk up from the chosen parent; reaching this category would create a loop.
+    let cursor = parentId;
+    for (let i = 0; cursor && i < 50; i++) {
+      if (cursor === id) return { error: "A category can't be placed inside itself or one of its own sub-categories" };
+      cursor = (await queryOne("SELECT parent_id FROM categories WHERE id = ?", [cursor]))?.parent_id;
+    }
+  }
   let image;
   try {
     image = await saveUpload(fd.get("image"), "categories");
@@ -185,10 +194,23 @@ export async function markPaidManually(fd) {
   redirect(`/admin/orders/${id}?saved=1`);
 }
 
-// ---------------- campaign (Detty December) ----------------
+// ---------------- seasonal campaign ----------------
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
 export async function saveCampaign(_prev, fd) {
   await requireAdmin();
   const current = await getSetting("campaign");
+
+  const name = str(fd, "name");
+  const title = str(fd, "title");
+  const slug = slugify(str(fd, "slug") || name);
+  const starts_at = str(fd, "starts_at");
+  const ends_at = str(fd, "ends_at");
+  if (!name || !title) return { error: "Campaign name and title are required" };
+  if (!slug || RESERVED_SLUGS.has(slug)) return { error: `"${slug}" can't be used as the page URL — please choose another` };
+  if ([starts_at, ends_at].some((d) => d && !DATE_RE.test(d))) return { error: "Dates must be valid" };
+  if (starts_at && ends_at && ends_at < starts_at) return { error: "End date must be on or after the start date" };
+
   let hero = current.hero_image;
   try {
     const up = await saveUpload(fd.get("hero_image"), "campaign");
@@ -197,18 +219,41 @@ export async function saveCampaign(_prev, fd) {
     return { error: e.message };
   }
   if (fd.get("remove_hero") === "on") hero = "";
+
+  // Remember old URLs so links/ads to the previous slug keep working.
+  const previous = new Set(current.previous_slugs || []);
+  if (current.slug && current.slug !== slug) previous.add(current.slug);
+  previous.delete(slug);
+
   await saveSetting("campaign", {
     ...current,
     enabled: !!bool(fd, "enabled"),
-    title: str(fd, "title") || current.title,
+    name,
+    slug,
+    previous_slugs: [...previous].slice(-10),
+    starts_at,
+    ends_at,
+    hide_after_end: !!bool(fd, "hide_after_end"),
+    show_countdown: !!bool(fd, "show_countdown"),
+    hide_packages_when_off: !!bool(fd, "hide_packages_when_off"),
+    eyebrow: str(fd, "eyebrow"),
+    title,
     subtitle: str(fd, "subtitle"),
-    body: sanitizeHtml(fd.get("body")),
-    ends_at: str(fd, "ends_at"),
-    announcement: str(fd, "announcement"),
-    show_announcement: !!bool(fd, "show_announcement"),
     hero_image: hero,
+    cta_label: str(fd, "cta_label"),
+    body: sanitizeHtml(fd.get("body")),
+    packages_heading: str(fd, "packages_heading") || "Packages",
+    packages_subheading: str(fd, "packages_subheading"),
+    package_label: str(fd, "package_label") || "Package",
+    empty_message: str(fd, "empty_message"),
+    whatsapp_message: str(fd, "whatsapp_message"),
+    show_on_home: !!bool(fd, "show_on_home"),
+    home_eyebrow: str(fd, "home_eyebrow"),
+    home_cta: str(fd, "home_cta"),
+    show_announcement: !!bool(fd, "show_announcement"),
+    announcement: str(fd, "announcement"),
   });
-  return { ok: "Landing page saved" };
+  redirect("/admin/campaign?saved=1");
 }
 
 // ---------------- banners ----------------

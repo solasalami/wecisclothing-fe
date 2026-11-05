@@ -7,7 +7,7 @@ export default function ShowroomCards({ showrooms, store, location = "showroom_c
       {showrooms.map((s) => (
         <div key={s.id} className="border border-line p-6">
           <h3 className="flex items-center gap-2 text-2xl">
-            <PinIcon className="text-brand-dark" /> {s.name}
+            <PinIcon className="text-gold-dark" /> {s.name}
           </h3>
           <p className="mt-3">{s.address}</p>
           {s.hours && (

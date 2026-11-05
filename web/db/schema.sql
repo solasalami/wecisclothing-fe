@@ -32,6 +32,7 @@ CREATE TABLE IF NOT EXISTS products (
   track_stock TINYINT(1) NOT NULL DEFAULT 0,
   is_active TINYINT(1) NOT NULL DEFAULT 1,
   is_featured TINYINT(1) NOT NULL DEFAULT 0,
+  badge VARCHAR(40) NULL,              -- card label e.g. "New arrival", "Bestseller"
   sort_order INT NOT NULL DEFAULT 0,
   meta_title VARCHAR(200) NULL,
   meta_description VARCHAR(320) NULL,

@@ -116,7 +116,7 @@ export default function CheckoutForm({ customer, shipping, showrooms, paymentMet
           <h2 className="mb-4 text-xl">Delivery</h2>
           <div className="space-y-2">
             {deliveryOptions.map((o) => (
-              <label key={o.id} className={`flex cursor-pointer items-start gap-3 border p-4 ${method === o.id ? "border-ink" : "border-line"}`}>
+              <label key={o.id} className={`flex cursor-pointer items-start gap-3 border p-4 ${method === o.id ? "border-gold bg-gold-light/40" : "border-line"}`}>
                 <input type="radio" name="delivery_method" value={o.id} checked={method === o.id} onChange={() => setMethod(o.id)} className="mt-1" />
                 <span className="flex-1">
                   <span className="block font-medium">{o.label}</span>
@@ -155,7 +155,7 @@ export default function CheckoutForm({ customer, shipping, showrooms, paymentMet
           ) : (
             <div className="space-y-2">
               {paymentMethods.map((m) => (
-                <label key={m.id} className={`flex cursor-pointer items-start gap-3 border p-4 ${payment === m.id ? "border-ink" : "border-line"}`}>
+                <label key={m.id} className={`flex cursor-pointer items-start gap-3 border p-4 ${payment === m.id ? "border-gold bg-gold-light/40" : "border-line"}`}>
                   <input type="radio" name="payment" value={m.id} checked={payment === m.id} onChange={() => setPayment(m.id)} className="mt-1" />
                   <span>
                     <span className="block font-medium">{m.label}</span>

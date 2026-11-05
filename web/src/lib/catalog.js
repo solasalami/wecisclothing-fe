@@ -1,16 +1,34 @@
 import "server-only";
 import { query, queryOne, parseJson } from "./db";
+import { getSetting } from "./settings";
+import { isCampaignLive } from "./campaign";
+
+/** Seasonal packages are hidden from listings (and can't be bought) outside their campaign, if configured. */
+export async function packagesAvailable() {
+  const c = await getSetting("campaign");
+  return isCampaignLive(c) || !c.hide_packages_when_off;
+}
 
 const PRODUCT_COLUMNS = `
   p.id, p.kind, p.name, p.slug, p.sku, p.short_description, p.price, p.compare_at_price,
-  p.stock_qty, p.track_stock, p.is_featured, p.sizes,
+  p.stock_qty, p.track_stock, p.is_featured, p.sizes, p.badge, p.created_at,
   (SELECT url FROM product_images i WHERE i.product_id = p.id ORDER BY i.sort_order, i.id LIMIT 1) AS image,
   (SELECT url FROM product_images i WHERE i.product_id = p.id ORDER BY i.sort_order, i.id LIMIT 1 OFFSET 1) AS image_alt`;
+
+const NEW_ARRIVAL_DAYS = 45;
+
+/** Card label: admin-set badge wins; otherwise "New arrival" for recently added products. */
+function displayBadge(p) {
+  if (p.badge) return p.badge;
+  if (p.created_at && Date.now() - new Date(p.created_at).getTime() < NEW_ARRIVAL_DAYS * 864e5) return "New arrival";
+  return null;
+}
 
 function hydrate(p) {
   if (!p) return p;
   return {
     ...p,
+    display_badge: displayBadge(p),
     sizes: parseJson(p.sizes, []),
     package_items: parseJson(p.package_items, []),
     in_stock: !p.track_stock || p.stock_qty > 0,
@@ -87,6 +105,8 @@ export async function listProducts(opts = {}) {
   if (opts.kind) {
     where.push("p.kind = ?");
     params.push(opts.kind);
+  } else if (!(await packagesAvailable())) {
+    where.push("p.kind = 'product'");
   }
   if (opts.featured) where.push("p.is_featured = 1");
   if (opts.categoryId) {
@@ -127,7 +147,7 @@ export async function getRelatedProducts(product, limit = 4) {
   if (!catIds.length) return (await listProducts({ limit })).items.filter((p) => p.id !== product.id);
   const rows = await query(
     `SELECT ${PRODUCT_COLUMNS} FROM products p
-     WHERE p.is_active = 1 AND p.id <> ?
+     WHERE p.is_active = 1 AND p.id <> ? ${(await packagesAvailable()) ? "" : "AND p.kind = 'product'"}
        AND EXISTS (SELECT 1 FROM product_categories pc WHERE pc.product_id = p.id AND pc.category_id IN (?))
      ORDER BY p.views DESC LIMIT ${Number(limit)}`,
     [product.id, catIds]

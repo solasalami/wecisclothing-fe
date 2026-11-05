@@ -1,0 +1,140 @@
+import ImageUpload from "@/components/admin/ImageUpload";
+import Link from "next/link";
+import { query } from "@/lib/db";
+import { getSetting } from "@/lib/settings";
+import { campaignStatus } from "@/lib/campaign";
+import { formatNaira } from "@/lib/format";
+import { ActionForm, SubmitButton } from "@/components/admin/Form";
+import { Field, TextArea, Check, Card, PageHeader, Badge } from "@/components/admin/Fields";
+import RichText from "@/components/admin/RichText";
+import { saveCampaign, toggleProduct } from "@/app/admin/actions";
+
+export const metadata = { title: "Seasonal campaign" };
+
+const STATUS = {
+  live: ["green", "Live now"],
+  scheduled: ["yellow", "Scheduled"],
+  ended: ["gray", "Ended"],
+  off: ["gray", "Switched off"],
+};
+
+export default async function CampaignAdmin({ searchParams }) {
+  const { saved } = await searchParams;
+  const [c, packages] = await Promise.all([
+    getSetting("campaign"),
+    query(`SELECT p.id, p.name, p.price, p.is_active, (SELECT url FROM product_images i WHERE i.product_id = p.id ORDER BY sort_order, id LIMIT 1) image
+           FROM products p WHERE p.kind = 'package' ORDER BY p.is_active DESC, p.sort_order, p.id DESC`),
+  ]);
+  const status = campaignStatus(c);
+  const [tone, label] = STATUS[status];
+
+  return (
+    <div className="space-y-8">
+      <PageHeader title="Seasonal campaign">
+        <Link href={`/${c.slug}`} target="_blank" className="btn-outline">{status === "live" ? "View page" : "Preview page"}</Link>
+        <Link href="/admin/products/new?kind=package" className="btn-primary">+ New package</Link>
+      </PageHeader>
+      {saved && <p className="border border-green-200 bg-green-50 p-3 text-sm text-green-700">Campaign saved.</p>}
+
+      <Card title="Status">
+        <div className="flex flex-wrap items-center gap-3 text-sm">
+          <Badge tone={tone}>{label}</Badge>
+          <span><strong>{c.name}</strong> at <code className="bg-soft px-1">/{c.slug}</code></span>
+          <span className="text-muted">
+            {c.starts_at ? `from ${c.starts_at}` : "from now"} {c.ends_at ? `until ${c.ends_at}` : "with no end date"}
+            {c.ends_at && (c.hide_after_end ? " (hides automatically after)" : " (stays up after)")}
+          </span>
+        </div>
+        <p className="text-xs text-muted">
+          When live, the campaign adds a menu item, an announcement bar, a homepage section and its landing page. Outside the dates everything
+          disappears automatically. You can still preview the page while signed in as admin.
+        </p>
+      </Card>
+
+      <Card title={`Packages (${packages.length})`}>
+        <p className="text-sm text-muted">
+          Packages are products with a list of “what’s included”. They appear on the campaign page{c.hide_packages_when_off ? " and are hidden from the shop outside the campaign dates" : ""}.
+          Unpublish last season’s packages before starting a new campaign.
+        </p>
+        {packages.length === 0 ? (
+          <p className="py-2 text-sm">No packages yet. <Link href="/admin/products/new?kind=package" className="underline">Create the first one</Link>.</p>
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {packages.map((p) => (
+              <div key={p.id} className="border border-line">
+                <Link href={`/admin/products/${p.id}`}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  {p.image ? <img src={p.image} alt="" className="aspect-[4/5] w-full object-cover" /> : <div className="flex aspect-[4/5] items-center justify-center bg-soft text-xs text-muted">No photo</div>}
+                </Link>
+                <div className="space-y-1 p-3 text-sm">
+                  <Link href={`/admin/products/${p.id}`} className="font-medium underline">{p.name}</Link>
+                  <p>{formatNaira(p.price)}</p>
+                  <div className="flex items-center justify-between">
+                    {p.is_active ? <Badge tone="green">Published</Badge> : <Badge>Hidden</Badge>}
+                    <form action={toggleProduct}>
+                      <input type="hidden" name="id" value={p.id} />
+                      <button className="text-xs underline">{p.is_active ? "Unpublish" : "Publish"}</button>
+                    </form>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
+
+      <ActionForm action={saveCampaign} className="space-y-6">
+        <Card title="Campaign & schedule">
+          <Check label="Campaign switched on" name="enabled" defaultChecked={c.enabled} hint="Master switch. Off = hidden regardless of dates." />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Campaign name" name="name" defaultValue={c.name} required hint="Used in the menu, footer and labels, e.g. Detty December, Eid Collection." />
+            <Field label="Page URL" name="slug" defaultValue={c.slug} required hint={`wecisclothing.com/${c.slug}. Old URLs redirect automatically.`} />
+            <Field label="Start date" name="starts_at" type="date" defaultValue={c.starts_at} hint="Lagos time. Blank = immediately." />
+            <Field label="End date" name="ends_at" type="date" defaultValue={c.ends_at} hint="Lagos time. Blank = no end." />
+          </div>
+          <Check label="Hide everything automatically after the end date" name="hide_after_end" defaultChecked={c.hide_after_end} />
+          <Check label="Show countdown to the end date" name="show_countdown" defaultChecked={c.show_countdown} />
+          <Check label="Hide packages from the shop (and stop sales) when the campaign isn't live" name="hide_packages_when_off" defaultChecked={c.hide_packages_when_off} />
+        </Card>
+
+        <Card title="Landing page">
+          <Field label="Small heading above the title" name="eyebrow" defaultValue={c.eyebrow} />
+          <Field label="Title" name="title" defaultValue={c.title} required />
+          <TextArea label="Sub-heading" name="subtitle" rows={2} defaultValue={c.subtitle} />
+          <div>
+            <span className="label">Hero background image</span>
+            {c.hero_image && (
+              <div className="mb-2 flex items-center gap-3">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={c.hero_image} alt="" className="h-20 w-36 object-cover" />
+                <Check label="Remove" name="remove_hero" />
+              </div>
+            )}
+            <ImageUpload name="hero_image" buttonLabel={c.hero_image ? "Replace image" : "Choose image"} hint="Optional · wide image, at least 1800×900. Without one, the hero uses the champagne background." />
+          </div>
+          <Field label="Main button text" name="cta_label" defaultValue={c.cta_label} />
+          <RichText label="Extra text (optional)" name="body" defaultValue={c.body} />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Packages heading" name="packages_heading" defaultValue={c.packages_heading} />
+            <Field label="Package badge label" name="package_label" defaultValue={c.package_label} hint="e.g. Festive package, Eid package" />
+          </div>
+          <Field label="Packages sub-heading" name="packages_subheading" defaultValue={c.packages_subheading} />
+          <Field label="Message when no packages are published yet" name="empty_message" defaultValue={c.empty_message} />
+          <Field label="Pre-filled WhatsApp message" name="whatsapp_message" defaultValue={c.whatsapp_message} />
+        </Card>
+
+        <Card title="Homepage & announcement bar">
+          <Check label="Show a campaign section on the homepage" name="show_on_home" defaultChecked={c.show_on_home} />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Homepage small heading" name="home_eyebrow" defaultValue={c.home_eyebrow} />
+            <Field label="Homepage button text" name="home_cta" defaultValue={c.home_cta} />
+          </div>
+          <Check label="Show announcement bar at the top of every page" name="show_announcement" defaultChecked={c.show_announcement} />
+          <Field label="Announcement text" name="announcement" defaultValue={c.announcement} />
+        </Card>
+
+        <SubmitButton>Save campaign</SubmitButton>
+      </ActionForm>
+    </div>
+  );
+}

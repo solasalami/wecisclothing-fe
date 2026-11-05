@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { getProductBySlug, getRelatedProducts } from "@/lib/catalog";
+import { getProductBySlug, getRelatedProducts, packagesAvailable } from "@/lib/catalog";
+import { isCampaignLive } from "@/lib/campaign";
 import { getSettings } from "@/lib/settings";
 import { formatNaira, whatsappLink, telLink, stripHtml } from "@/lib/format";
 import ProductGallery from "@/components/ProductGallery";
@@ -25,7 +26,11 @@ export default async function ProductPage({ params }) {
   const { slug } = await params;
   const product = await getProductBySlug(slug);
   if (!product) notFound();
-  const [related, { store }] = await Promise.all([getRelatedProducts(product), getSettings()]);
+  const [related, { store, campaign }, packagesOk] = await Promise.all([getRelatedProducts(product), getSettings(), packagesAvailable()]);
+  const isPackage = product.kind === "package";
+  const campaignLive = isCampaignLive(campaign);
+  // Seasonal packages can't be bought outside their campaign (if configured).
+  const purchasable = product.in_stock && (!isPackage || packagesOk);
   const onSale = product.compare_at_price && Number(product.compare_at_price) > Number(product.price);
   const url = `${process.env.NEXT_PUBLIC_SITE_URL || ""}/product/${product.slug}`;
 
@@ -39,7 +44,7 @@ export default async function ProductPage({ params }) {
     price: Number(product.price),
     image: product.images[0]?.url || null,
     sizes: product.sizes,
-    in_stock: product.in_stock,
+    in_stock: purchasable,
     category: product.categories[0]?.name,
   };
 
@@ -55,7 +60,7 @@ export default async function ProductPage({ params }) {
       "@type": "Offer",
       priceCurrency: "NGN",
       price: Number(product.price),
-      availability: product.in_stock ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
+      availability: purchasable ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
       url,
     },
   };
@@ -79,8 +84,13 @@ export default async function ProductPage({ params }) {
         <ProductGallery images={product.images} name={product.name} />
 
         <div>
-          {product.kind === "package" && (
-            <span className="mb-3 inline-block bg-festive px-2 py-1 text-xs font-bold uppercase tracking-wider">Detty December package</span>
+          {isPackage && campaignLive && (
+            <Link href={`/${campaign.slug}`} className="mb-3 inline-block bg-gold px-3 py-1 text-xs uppercase tracking-[0.12em] text-white">
+              {campaign.name} · {campaign.package_label}
+            </Link>
+          )}
+          {isPackage && !packagesOk && (
+            <p className="mb-3 border border-line bg-soft p-3 text-sm">This seasonal package is no longer available. <Link href="/shop" className="underline">Browse the collection</Link></p>
           )}
           <h1 className="text-3xl md:text-4xl">{product.name}</h1>
           <p className="mt-4 text-2xl">
@@ -90,8 +100,8 @@ export default async function ProductPage({ params }) {
           {product.short_description && <p className="mt-4 text-muted">{product.short_description}</p>}
 
           {product.package_items.length > 0 && (
-            <div className="mt-6 border border-festive/40 bg-festive/5 p-4">
-              <p className="label !text-festive-dark">What&apos;s included</p>
+            <div className="mt-6 border border-gold/40 bg-gold-light/50 p-4">
+              <p className="label !text-gold-dark">What&apos;s included</p>
               <ul className="list-disc space-y-1 pl-5 text-sm">
                 {product.package_items.map((it, i) => <li key={i}>{it}</li>)}
               </ul>

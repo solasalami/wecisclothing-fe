@@ -13,7 +13,7 @@ export function toItem(p, { quantity = 1, size, index } = {}) {
   return {
     item_id: String(p.sku || p.id || p.productId),
     item_name: p.name,
-    item_category: p.kind === "package" ? "Detty December Package" : p.category || undefined,
+    item_category: p.kind === "package" ? "Seasonal package" : p.category || undefined,
     item_variant: size || undefined,
     price: Number(p.price ?? p.unit_price),
     quantity,
