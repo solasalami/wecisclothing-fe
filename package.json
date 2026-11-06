@@ -9,7 +9,9 @@
     "lint": "eslint",
     "db:migrate": "node scripts/migrate.mjs",
     "db:import": "node scripts/import-opencart.mjs ./localhost.sql ./wecisclothing/image",
-    "admin:create": "node scripts/create-admin.mjs"
+    "admin:create": "node scripts/create-admin.mjs",
+    "admin:sql": "node scripts/admin-sql.mjs",
+    "media:upload": "node scripts/upload-media.mjs"
   },
   "dependencies": {
     "@netlify/blobs": "^11.1.7",

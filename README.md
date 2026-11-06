@@ -64,6 +64,15 @@ With `PAYMENT_MOCK=true` (dev only) checkout sends you to a **simulated OPay pag
 - **Delivery fees** default to ₦5,000 in Lagos and ₦10,000 outside Lagos.
 - **Seasonal campaign.** Admin → Seasonal campaign. Check the dates and wording, then **+ New package**. For a new season, unpublish the old packages and change the name, URL, wording and dates.
 
+## Moving local data to a live database (phpMyAdmin)
+
+1. **Export:** a phpMyAdmin-ready dump goes in `db/dumps/` (git-ignored). It's built with `mysqldump --no-tablespaces --set-gtid-purged=OFF`, using `utf8mb4_unicode_ci` and no DEFINERs. `admin_users` is exported as structure only.
+2. **Import:** in phpMyAdmin, select the **empty** live database and use **Import**, choosing the `.sql` file.
+3. **Admin login:** run `npm run admin:sql -- "Your Name" you@wecisclothing.com 'strong-password'` and paste the printed SQL into phpMyAdmin → SQL.
+4. **Images:** run `NETLIFY_SITE_ID=… NETLIFY_AUTH_TOKEN=… npm run media:upload`. This copies `./.uploads` to Netlify Blobs under the same `/media/...` paths.
+5. **Netlify environment variables:** set `DATABASE_URL=mysql://USER:PASSWORD@HOST:3306/DBNAME` (URL-encode special characters in the password), `DATABASE_SSL`, `AUTH_SECRET`, `NEXT_PUBLIC_SITE_URL` and `STORAGE_DRIVER=blobs`, then redeploy.
+6. **Remote access:** the host must allow **remote MySQL connections**. Netlify Functions have no fixed IP, so on cPanel add `%` under *Remote MySQL*. Check `/api/health` afterwards.
+
 ## Database outages & health check
 
 If MySQL can't be reached (down, wrong credentials, too many connections, timeouts), visitors are redirected to **`/maintenance`**. It's a branded page that never touches the database:

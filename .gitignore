@@ -49,3 +49,6 @@ next-env.d.ts
 /wecisclothing.zip
 # OpenCart database dump (contains customer data and password hashes)
 /localhost.sql
+
+# Database exports (contain store data)
+/db/dumps/
