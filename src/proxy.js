@@ -8,6 +8,14 @@ import { jwtVerify } from "jose";
 export async function proxy(request) {
   const { pathname, search } = request.nextUrl;
 
+  // Old OpenCart links like "/?route=product/product&product_id=5" go to the
+  // legacy redirect handler (app/index.php/route.js).
+  if (pathname === "/" && request.nextUrl.searchParams.has("route")) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/index.php";
+    return NextResponse.rewrite(url);
+  }
+
   if (pathname.startsWith("/admin") && pathname !== "/admin/login") {
     const token = request.cookies.get("wecis_admin")?.value;
     let ok = false;
