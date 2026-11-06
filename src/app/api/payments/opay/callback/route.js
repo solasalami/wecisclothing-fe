@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { verifyCallbackSignature } from "@/lib/opay";
 import { confirmPayment } from "@/lib/payments";
+import { recordWebhook } from "@/lib/golive";
 
 export const dynamic = "force-dynamic";
 
@@ -16,11 +17,13 @@ export async function POST(request) {
   }
   if (!verifyCallbackSignature(body)) {
     console.warn("OPay callback with invalid signature", body?.payload?.reference);
+    await recordWebhook("invalid");
     return NextResponse.json({ ok: false }, { status: 401 });
   }
   const reference = body.payload.reference;
   try {
     const { status } = await confirmPayment(reference);
+    await recordWebhook("valid", { reference, status }); // shown on the go-live checklist
     return NextResponse.json({ ok: true, status });
   } catch (err) {
     // Includes "database unavailable" (thrown as a redirect): never redirect a webhook;

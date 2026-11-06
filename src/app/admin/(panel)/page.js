@@ -2,9 +2,8 @@ import Link from "next/link";
 import { query } from "@/lib/db";
 import { formatNaira } from "@/lib/format";
 import OrdersTable from "@/components/admin/OrdersTable";
-import { opayConfigured, opayMissingVars, opayMode } from "@/lib/opay";
+import GoLiveChecklist from "@/components/admin/GoLiveChecklist";
 import { getSettings } from "@/lib/settings";
-import { campaignStatus } from "@/lib/campaign";
 
 export const metadata = { title: "Dashboard" };
 
@@ -17,17 +16,6 @@ export default async function Dashboard() {
     query("SELECT COUNT(*) n FROM products WHERE is_active = 0"),
     getSettings(),
   ]);
-  const checks = [
-    [
-      opayConfigured() && settings.payments.opay_enabled,
-      opayConfigured() ? `OPay connected (${opayMode()} mode)` : "OPay keys configured",
-      !opayConfigured()
-        ? `Not visible to the running site: ${opayMissingVars().join(", ")}. In Netlify → Environment variables, add them with scope "Functions" (or All scopes), then redeploy.`
-        : "OPay is switched off in Settings → Payments, so checkout won't offer it.",
-    ],
-    [!!settings.tracking.gtm_id, "Google Tag Manager installed", "Add your GTM container ID in Settings."],
-    [campaignStatus(settings.campaign) === "live", `${settings.campaign.name} campaign live`, `Status: ${campaignStatus(settings.campaign)} . Manage it under Seasonal campaign.`],
-  ];
   return (
     <div className="space-y-8">
       <h1 className="text-3xl">Dashboard</h1>
@@ -38,17 +26,7 @@ export default async function Dashboard() {
         <Stat label="Hidden products" value={drafts.n} href="/admin/products?status=hidden" />
       </div>
 
-      <section className="border border-line bg-white p-5">
-        <h2 className="mb-3 font-sans text-sm font-bold uppercase tracking-wider">Launch checklist</h2>
-        <ul className="space-y-2 text-sm">
-          {checks.map(([ok, label, help]) => (
-            <li key={label} className="flex gap-2">
-              <span className={ok ? "text-green-600" : "text-yellow-600"}>{ok ? "✔" : "●"}</span>
-              <span>{label}{!ok && <span className="block text-xs text-muted">{help}</span>}</span>
-            </li>
-          ))}
-        </ul>
-      </section>
+      <GoLiveChecklist settings={settings} />
 
       <section className="border border-line bg-white p-5">
         <div className="mb-3 flex items-center justify-between">

@@ -5,6 +5,7 @@ import { getSettings } from "./settings";
 import { getShowrooms } from "./catalog";
 import { sendMail } from "./email";
 import { orderConfirmationEmail, adminNewOrderEmail } from "./email-templates";
+import { recordEmailResult } from "./golive";
 
 function siteUrl() {
   return (process.env.NEXT_PUBLIC_SITE_URL || process.env.URL || "http://localhost:3000").replace(/\/$/, "");
@@ -39,6 +40,7 @@ export async function sendOrderPaidEmails(orderId, { customer = true, admin = tr
       results.admin = await sendMail({ to: adminTo, replyTo: built.order.email, ...built.admin });
     }
     for (const [who, r] of Object.entries(results)) {
+      await recordEmailResult(r.ok, r.error); // shown on the go-live checklist
       if (r.ok) console.log(`[email] ${who} email for ${built.order.order_number} sent (${r.id})`);
       else console.error(`[email] ${who} email for ${built.order.order_number} failed: ${r.error}`);
     }

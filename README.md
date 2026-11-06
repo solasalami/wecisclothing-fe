@@ -55,6 +55,10 @@ With `PAYMENT_MOCK=true` (dev only) checkout sends you to a **simulated OPay pag
 5. In the OPay merchant dashboard, set the webhook/callback URL to `https://wecisclothing.com/api/payments/opay/callback`.
 6. Point the wecisclothing.com DNS at Netlify once you're happy with the preview URL.
 
+## Go-live checklist
+
+Open **Admin, Dashboard, Go-live checklist**. It runs automatic checks (OPay keys and mode, OPay webhook received, email delivery, security, content, tracking) and lets the team tick off manual steps. The full list is in [docs/GO-LIVE.md](docs/GO-LIVE.md).
+
 ## After import: things to review in Admin
 
 - **3 hidden products** named "Untitled … style #NN". These were theme demo names on real photos. Rename them and make them visible, or delete them.

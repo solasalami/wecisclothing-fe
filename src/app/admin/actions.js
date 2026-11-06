@@ -214,6 +214,15 @@ export async function resendOrderEmail(_prev, fd) {
   return { error: `Email not sent. ${detail}` };
 }
 
+export async function toggleGoLiveStep(fd) {
+  const me = await requireAdmin();
+  const { setManualStep, manualSteps } = await import("@/lib/golive");
+  const id = str(fd, "id");
+  if (!manualSteps().some((s) => s.id === id)) return;
+  await setManualStep(id, fd.get("done") === "1", me.name);
+  revalidatePath("/admin");
+}
+
 // ---------------- seasonal campaign ----------------
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
