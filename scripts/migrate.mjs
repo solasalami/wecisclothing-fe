@@ -1,4 +1,4 @@
-// Usage: npm run db:migrate   — applies db/schema.sql (idempotent)
+// Usage: npm run db:migrate   (applies db/schema.sql, idempotent)
 import "./env.mjs";
 import fs from "node:fs";
 import mysql from "mysql2/promise";

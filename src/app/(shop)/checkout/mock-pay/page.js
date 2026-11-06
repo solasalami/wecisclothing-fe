@@ -23,7 +23,7 @@ export default async function MockPayPage({ searchParams }) {
 
   return (
     <div className="mx-auto max-w-md px-4 py-20 text-center">
-      <p className="text-xs font-bold uppercase tracking-widest text-red-600">Test mode — no real money</p>
+      <p className="text-xs font-bold uppercase tracking-widest text-red-600">Test mode: no real money</p>
       <h1 className="mt-3 text-3xl">Simulated OPay checkout</h1>
       <p className="mt-4 text-lg">{formatNaira(payment.amount)}</p>
       <p className="text-sm text-muted">Reference {payment.reference}</p>

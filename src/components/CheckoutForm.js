@@ -21,12 +21,12 @@ export default function CheckoutForm({ customer, shipping, showrooms, paymentMet
   const ikeja = showrooms.find((s) => /ikeja/i.test(s.name));
   const vi = showrooms.find((s) => /victoria|vi\b/i.test(s.name));
   const deliveryOptions = [
-    { id: "delivery_lagos", label: "Home delivery — Lagos", fee: shipping.lagos },
-    { id: "delivery_nationwide", label: "Home delivery — outside Lagos", fee: shipping.nationwide },
+    { id: "delivery_lagos", label: "Home delivery in Lagos", fee: shipping.lagos },
+    { id: "delivery_nationwide", label: "Home delivery outside Lagos", fee: shipping.nationwide },
     ...(shipping.pickup
       ? [
-          { id: "pickup_ikeja", label: "Pick up — Ikeja showroom", fee: 0, hint: ikeja?.address },
-          { id: "pickup_vi", label: "Pick up — Victoria Island showroom", fee: 0, hint: vi?.address },
+          { id: "pickup_ikeja", label: "Pick up at Ikeja showroom", fee: 0, hint: ikeja?.address },
+          { id: "pickup_vi", label: "Pick up at Victoria Island showroom", fee: 0, hint: vi?.address },
         ]
       : []),
   ];

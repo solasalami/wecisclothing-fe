@@ -1,7 +1,7 @@
 import "server-only";
 import crypto from "node:crypto";
 
-// OPay Express Checkout (Cashier) — https://doc.opaycheckout.com/cashier-create.html
+// OPay Express Checkout (Cashier): https://doc.opaycheckout.com/cashier-create.html
 const BASE = {
   sandbox: "https://sandboxapi.opaycheckout.com",
   production: "https://api.opaycheckout.com",

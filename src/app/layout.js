@@ -7,7 +7,7 @@ const jost = Jost({ subsets: ["latin"], weight: ["300", "400", "500", "600"], va
 
 export const metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"),
-  title: { default: "Wecis Clothing — Premium African Fashion in Lagos", template: "%s | Wecis Clothing" },
+  title: { default: "Wecis Clothing | Premium African Fashion in Lagos", template: "%s | Wecis Clothing" },
   description:
     "Premium African-inspired clothing for men and women. Agbada, kaftan, adire, native and tropical outfits. Showrooms in Ikeja and Victoria Island, Lagos.",
   openGraph: { siteName: "Wecis Clothing", locale: "en_NG", type: "website" },

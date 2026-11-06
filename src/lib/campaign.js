@@ -1,4 +1,4 @@
-// Seasonal campaign helpers (pure functions — safe on server and client).
+// Seasonal campaign helpers (pure functions, safe on server and client).
 
 /** Lagos is UTC+1 all year (no DST). */
 const LAGOS_OFFSET = "+01:00";

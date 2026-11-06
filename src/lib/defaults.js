@@ -55,7 +55,7 @@ export const DEFAULT_SETTINGS = {
     home_show_packages: true, // show published packages under the section
     home_eyebrow: "Limited season collection",
     home_cta: "Explore festive packages",
-    announcement: "Detty December packages are live — order early for delivery before Christmas!",
+    announcement: "Detty December packages are live! Order early for delivery before Christmas.",
     show_announcement: true,
     hide_packages_when_off: true, // remove packages from shop listings outside the campaign
   },

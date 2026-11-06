@@ -42,7 +42,7 @@ export default async function SettingsAdmin() {
             label="OPay online payments"
             name="opay_enabled"
             defaultChecked={payments.opay_enabled}
-            hint={opayConfigured() ? "OPay keys detected." : "OPay keys are not configured yet — set OPAY_MERCHANT_ID, OPAY_PUBLIC_KEY and OPAY_SECRET_KEY in Netlify."}
+            hint={opayConfigured() ? "OPay keys detected." : "OPay keys are not configured yet. Set OPAY_MERCHANT_ID, OPAY_PUBLIC_KEY and OPAY_SECRET_KEY in Netlify."}
           />
           <Check label="Direct bank transfer" name="bank_transfer_enabled" defaultChecked={payments.bank_transfer_enabled} />
           <TextArea label="Bank transfer instructions" name="bank_transfer_details" rows={4} defaultValue={payments.bank_transfer_details} />

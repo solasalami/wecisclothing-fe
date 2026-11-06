@@ -168,7 +168,7 @@ export default async function CampaignAdmin({ searchParams }) {
               <ImageUpload name="home_image_mobile" buttonLabel={c.home_image_mobile ? "Replace image" : "Choose image"} hint="Portrait, e.g. 900×1100 · falls back to the desktop image" compact />
             </div>
           </div>
-          <Field label="Image description (for screen readers & SEO)" name="home_image_alt" defaultValue={c.home_image_alt} placeholder="e.g. Detty December 2026 — festive outfits and packages" />
+          <Field label="Image description (for screen readers & SEO)" name="home_image_alt" defaultValue={c.home_image_alt} placeholder="e.g. Detty December 2026: festive outfits and packages" />
 
           <p className="pt-2 text-xs uppercase tracking-[0.15em] text-muted">Text (used when there&apos;s no image)</p>
           <div className="grid gap-4 sm:grid-cols-2">

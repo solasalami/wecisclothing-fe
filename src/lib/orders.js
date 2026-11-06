@@ -4,10 +4,10 @@ import { query, queryOne, transaction } from "./db";
 import { getProductsByIds, packagesAvailable } from "./catalog";
 
 export const DELIVERY_METHODS = {
-  delivery_lagos: "Home delivery — Lagos",
-  delivery_nationwide: "Home delivery — Outside Lagos",
-  pickup_ikeja: "Pick up — Ikeja showroom",
-  pickup_vi: "Pick up — Victoria Island showroom",
+  delivery_lagos: "Home delivery in Lagos",
+  delivery_nationwide: "Home delivery outside Lagos",
+  pickup_ikeja: "Pick up at Ikeja showroom",
+  pickup_vi: "Pick up at Victoria Island showroom",
 };
 
 export const ORDER_STATUSES = ["pending", "processing", "ready", "shipped", "completed", "cancelled", "refunded"];
@@ -161,7 +161,7 @@ export async function markOrderPaid(orderId, reference) {
 
 /**
  * Atomically claim the right to emit the browser `purchase` event for an order.
- * Only the first caller gets true — this is what prevents duplicate conversions
+ * Only the first caller gets true; this is what prevents duplicate conversions
  * when the thank-you page is refreshed, bookmarked or revisited.
  */
 export async function claimPurchaseTracking(orderId) {

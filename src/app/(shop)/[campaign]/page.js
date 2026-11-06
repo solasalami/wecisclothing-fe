@@ -55,7 +55,7 @@ export default async function CampaignPage({ params }) {
     <div>
       {isPreview && (
         <div className="bg-ink px-4 py-2 text-center text-xs uppercase tracking-[0.15em] text-white">
-          Admin preview — this campaign is <strong>{status}</strong> and hidden from shoppers.{" "}
+          Admin preview: this campaign is <strong>{status}</strong> and hidden from shoppers.{" "}
           <Link href="/admin/campaign" className="underline">Edit campaign</Link>
         </div>
       )}

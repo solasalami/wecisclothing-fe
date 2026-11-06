@@ -1,4 +1,4 @@
-# Wecis Clothing — Next.js storefront & admin
+# Wecis Clothing: Next.js storefront & admin
 
 A replacement for the OpenCart 3 site at wecisclothing.com. It's built with **Next.js 16 (App Router, plain JavaScript)**, **MySQL 8**, **Tailwind CSS 4** and **Netlify** (hosting, with Netlify Blobs for image storage). Payments go through **OPay**, and analytics through **Google Tag Manager → GA4 / Google Ads**.
 

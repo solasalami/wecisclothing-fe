@@ -13,7 +13,7 @@ export default function CampaignPromo({ campaign }) {
   const cta = campaign.home_cta || `Shop ${campaign.name}`;
 
   if (campaign.home_image) {
-    const alt = campaign.home_image_alt || `${title}${subtitle ? ` — ${subtitle}` : ""}`;
+    const alt = campaign.home_image_alt || `${title}${subtitle ? `: ${subtitle}` : ""}`;
     return (
       <Link href={href} className="group block overflow-hidden" aria-label={`${title}: ${cta}`}>
         <Image

@@ -37,8 +37,8 @@ export default async function UsersAdmin({ searchParams }) {
             <div>
               <label className="label" htmlFor="role">Role</label>
               <select id="role" name="role" defaultValue={current?.role || "staff"} className="input">
-                <option value="staff">Staff — products, orders, content</option>
-                <option value="owner">Owner — everything incl. settings & users</option>
+                <option value="staff">Staff: products, orders, content</option>
+                <option value="owner">Owner: everything incl. settings & users</option>
               </select>
             </div>
             <Field label={current ? "New password (leave blank to keep)" : "Password (10+ characters)"} name="password" type="password" autoComplete="new-password" />

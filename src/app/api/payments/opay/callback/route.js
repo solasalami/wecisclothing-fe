@@ -23,7 +23,7 @@ export async function POST(request) {
     const { status } = await confirmPayment(reference);
     return NextResponse.json({ ok: true, status });
   } catch (err) {
-    // Includes "database unavailable" (thrown as a redirect): never redirect a webhook —
+    // Includes "database unavailable" (thrown as a redirect): never redirect a webhook;
     // answer 503 so OPay retries later and the payment is confirmed once we're back.
     console.error("OPay callback processing failed", err?.digest || err);
     return NextResponse.json({ ok: false }, { status: 503, headers: { "Retry-After": "120" } });

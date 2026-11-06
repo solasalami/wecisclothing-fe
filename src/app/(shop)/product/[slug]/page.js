@@ -13,7 +13,7 @@ export async function generateMetadata({ params }) {
   const { slug } = await params;
   const p = await getProductBySlug(slug);
   if (!p) return {};
-  const description = p.meta_description || p.short_description || stripHtml(p.description).slice(0, 160) || `${p.name} — ${formatNaira(p.price)}`;
+  const description = p.meta_description || p.short_description || stripHtml(p.description).slice(0, 160) || `${p.name}, ${formatNaira(p.price)}`;
   return {
     title: p.meta_title || p.name,
     description,

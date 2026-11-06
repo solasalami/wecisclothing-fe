@@ -50,9 +50,9 @@ export default async function OrderSuccessPage({ params, searchParams }) {
   }
 
   const heading = paid
-    ? "Thank you — your order is confirmed!"
+    ? "Thank you, your order is confirmed!"
     : order.payment_method === "bank_transfer"
-      ? "Order received — awaiting bank transfer"
+      ? "Order received, awaiting bank transfer"
       : order.payment_status === "failed"
         ? "Payment was not completed"
         : "Payment processing…";

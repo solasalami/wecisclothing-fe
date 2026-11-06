@@ -217,7 +217,7 @@ export async function saveCampaign(_prev, fd) {
   const starts_at = str(fd, "starts_at");
   const ends_at = str(fd, "ends_at");
   if (!name || !title) return { error: "Campaign name and title are required" };
-  if (!slug || RESERVED_SLUGS.has(slug)) return { error: `"${slug}" can't be used as the page URL — please choose another` };
+  if (!slug || RESERVED_SLUGS.has(slug)) return { error: `"${slug}" can't be used as the page URL. Please choose another` };
   if ([starts_at, ends_at].some((d) => d && !DATE_RE.test(d))) return { error: "Dates must be valid" };
   if (starts_at && ends_at && ends_at < starts_at) return { error: "End date must be on or after the start date" };
 

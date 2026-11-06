@@ -1,4 +1,4 @@
--- Wecis Clothing — clean MySQL 8 schema (replaces the 136 oc_* OpenCart tables)
+-- Wecis Clothing: clean MySQL 8 schema (replaces the 136 oc_* OpenCart tables)
 SET NAMES utf8mb4;
 
 CREATE TABLE IF NOT EXISTS categories (

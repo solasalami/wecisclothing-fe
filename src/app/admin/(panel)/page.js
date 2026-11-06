@@ -26,7 +26,7 @@ export default async function Dashboard() {
         : "OPay is switched off in Settings → Payments, so checkout won't offer it.",
     ],
     [!!settings.tracking.gtm_id, "Google Tag Manager installed", "Add your GTM container ID in Settings."],
-    [campaignStatus(settings.campaign) === "live", `${settings.campaign.name} campaign live`, `Status: ${campaignStatus(settings.campaign)} — manage it under Seasonal campaign.`],
+    [campaignStatus(settings.campaign) === "live", `${settings.campaign.name} campaign live`, `Status: ${campaignStatus(settings.campaign)} . Manage it under Seasonal campaign.`],
   ];
   return (
     <div className="space-y-8">

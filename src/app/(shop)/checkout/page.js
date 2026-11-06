@@ -10,7 +10,7 @@ export default async function CheckoutPage() {
   const [settings, customer, showrooms] = await Promise.all([getSettings(), getCustomer(), getShowrooms()]);
   const { shipping, payments } = settings;
   const methods = [];
-  if (payments.opay_enabled && onlinePaymentAvailable()) methods.push({ id: "opay", label: "Pay online with OPay", hint: "Card, bank transfer, USSD or OPay wallet — secure checkout by OPay." });
+  if (payments.opay_enabled && onlinePaymentAvailable()) methods.push({ id: "opay", label: "Pay online with OPay", hint: "Card, bank transfer, USSD or OPay wallet, with secure checkout by OPay." });
   if (payments.bank_transfer_enabled) methods.push({ id: "bank_transfer", label: "Direct bank transfer", hint: "We'll show our account details after you place the order. Your order is confirmed once payment is received." });
 
   return (

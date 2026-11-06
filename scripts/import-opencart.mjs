@@ -59,6 +59,8 @@ function tableRows(table) {
 
 const decode = (s) =>
   String(s ?? "")
+    .replace(/&mdash;/g, "\u2014")
+    .replace(/\s*\u2014\s*/g, ", ") // house style: no em dashes
     .replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#039;/g, "'").replace(/&amp;/g, "&");
 
 // Strip OpenCart/ChatGPT paste cruft (data-* attrs, inline styles, classes) from HTML.

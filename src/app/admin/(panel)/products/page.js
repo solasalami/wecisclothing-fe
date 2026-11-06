@@ -53,7 +53,7 @@ export default async function ProductsAdmin({ searchParams }) {
                 </td>
                 <td className="max-w-48 text-xs text-muted">{p.cats}</td>
                 <td>{formatNaira(p.price)}</td>
-                <td>{p.track_stock ? p.stock_qty : <span className="text-muted">—</span>}</td>
+                <td>{p.track_stock ? p.stock_qty : <span className="text-muted">-</span>}</td>
                 <td className="space-x-1">
                   {p.is_active ? <Badge tone="green">Visible</Badge> : <Badge>Hidden</Badge>}
                   {p.kind === "package" && <Badge tone="gold">Package</Badge>}

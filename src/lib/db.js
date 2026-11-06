@@ -7,7 +7,7 @@ import { getDbConfig } from "./db-config.mjs";
 // On serverless (Netlify Functions = AWS Lambda) each warm instance keeps its own pool,
 // and frozen instances keep idle sockets open on the MySQL server. Shared hosts cap
 // connections per user (often 10–25), so there we use a tiny pool and close
-// connections as soon as they're released (maxIdle 0) — nothing lingers between requests.
+// connections as soon as they're released (maxIdle 0), so nothing lingers between requests.
 const SERVERLESS = Boolean(process.env.AWS_LAMBDA_FUNCTION_NAME || process.env.NETLIFY || process.env.VERCEL);
 const CONNECTION_LIMIT = Number(process.env.DB_CONNECTION_LIMIT) || (SERVERLESS ? 2 : 5);
 const MAX_IDLE = process.env.DB_MAX_IDLE !== undefined ? Number(process.env.DB_MAX_IDLE) : SERVERLESS ? 0 : CONNECTION_LIMIT;
