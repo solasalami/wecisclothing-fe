@@ -110,13 +110,16 @@ export default function Header({ categories, store, campaign, account }) {
               href="/account"
               aria-label={`My account, signed in as ${account.firstName}`}
               title={`Signed in as ${account.firstName}`}
-              className="hidden items-center gap-1.5 p-1 text-gold-dark hover:text-ink sm:flex"
+              className="relative hidden p-1 text-gold-dark hover:text-ink sm:block"
             >
-              <span className="relative">
+              <span className="relative block">
                 <UserIcon />
                 <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-white bg-gold" aria-hidden="true" />
               </span>
-              <span className="hidden max-w-24 truncate text-xs font-medium uppercase tracking-wider xl:inline">Hi, {account.firstName}</span>
+              {/* Sits under the icon without changing the header's height or the icons' alignment. */}
+              <span className="absolute left-1/2 top-full mt-0.5 max-w-24 -translate-x-1/2 truncate whitespace-nowrap text-[10px] font-medium uppercase leading-none tracking-wider">
+                Hi, {account.firstName}
+              </span>
             </Link>
           ) : (
             <Link href="/account" aria-label="My account, sign in" title="Sign in" className="hidden p-1 hover:text-gold-dark sm:block">
