@@ -12,6 +12,12 @@ const nextConfig = {
     },
   },
   serverExternalPackages: ["mysql2"],
+  async redirects() {
+    return [
+      // Old one-line page, replaced by the full policy.
+      { source: "/pages/delivery-information", destination: "/pages/shipping-and-returns", permanent: true },
+    ];
+  },
   experimental: {
     serverActions: { bodySizeLimit: "10mb" },
   },

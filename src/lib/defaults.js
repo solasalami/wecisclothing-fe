@@ -1,4 +1,6 @@
 // Store defaults. Kept free of database imports so the maintenance page can use them.
+import { DEFAULT_SIZE_GUIDE } from "./size-guide";
+
 export const DEFAULT_SETTINGS = {
   store: {
     name: "Wecis Clothing",
@@ -27,6 +29,7 @@ export const DEFAULT_SETTINGS = {
     vat_rate: 7.5, // percent; Nigerian VAT is 7.5%
     vat_label: "VAT",
   },
+  size_guide: DEFAULT_SIZE_GUIDE, // edited in Admin, Size guide
   tracking: {
     gtm_id: "", // overrides NEXT_PUBLIC_GTM_ID when set
   },

@@ -127,7 +127,12 @@ export default async function ProductPage({ params }) {
               <PhoneIcon width={18} height={18} /> Call sales
             </a>
           </div>
-          <p className="mt-3 text-xs text-muted">Need a custom fit? Visit our Ikeja or Victoria Island showroom to get measured.</p>
+          <p className="mt-3 text-xs text-muted">
+            Need a custom fit? Use our <Link href="/size-guide" className="underline">size guide</Link> or visit our Ikeja or Victoria Island showroom to get measured.
+          </p>
+          <p className="mt-1 text-xs text-muted">
+            Delivery across Nigeria or free showroom pick-up. <Link href="/pages/shipping-and-returns" className="underline">Shipping &amp; returns</Link>
+          </p>
 
           {product.description && stripHtml(product.description) && stripHtml(product.description) !== product.short_description && (
             <div className="mt-8 border-t border-line pt-6">

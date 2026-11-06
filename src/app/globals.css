@@ -58,6 +58,9 @@
 .prose-wecis h3 { @apply mb-2 mt-4 text-xl; }
 .prose-wecis a { @apply underline; }
 .prose-wecis strong { @apply font-semibold; }
+.prose-wecis table { @apply mb-4 w-full border-collapse text-sm; }
+.prose-wecis th { @apply bg-ink px-3 py-2 text-left font-medium text-white; }
+.prose-wecis td { @apply border-b border-line px-3 py-2; }
 
 /* Announcement marquee (components/Marquee.js) */
 @keyframes marquee {

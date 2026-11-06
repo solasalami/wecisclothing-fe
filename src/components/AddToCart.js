@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useCart } from "./CartProvider";
 import { trackViewItem } from "@/lib/analytics";
 
@@ -33,7 +34,10 @@ export default function AddToCart({ product }) {
     <div className="mt-6 space-y-5">
       {product.sizes.length > 0 && (
         <div>
-          <p className="label">Size</p>
+          <div className="flex items-baseline justify-between">
+            <p className="label">Size</p>
+            <Link href="/size-guide" target="_blank" className="text-xs underline">Size guide</Link>
+          </div>
           <div className="flex flex-wrap gap-2">
             {product.sizes.map((s) => (
               <button

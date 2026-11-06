@@ -62,6 +62,7 @@ export default function Footer({ store, showrooms, categories, pages, campaign }
                 <Link href={`/pages/${p.slug}`} className="hover:text-gold">{p.title}</Link>
               </li>
             ))}
+            <li><Link href="/size-guide" className="hover:text-gold">Size guide</Link></li>
             <li><Link href="/contact" className="hover:text-gold">Contact &amp; showrooms</Link></li>
             <li><Link href="/account" className="hover:text-gold">My account</Link></li>
           </ul>

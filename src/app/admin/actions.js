@@ -12,6 +12,7 @@ import { getSetting, saveSetting } from "@/lib/settings";
 import { markOrderPaid, ORDER_STATUSES } from "@/lib/orders";
 import { queueOrderPaidEmails, sendOrderPaidEmails } from "@/lib/order-emails";
 import { RESERVED_SLUGS } from "@/lib/campaign";
+import { SIZE_MEASURES, parseRange } from "@/lib/size-guide";
 
 // Clear cached storefront data after any content change (see lib/cache.js).
 const invalidateStore = () => updateTag(STORE_TAG);
@@ -419,6 +420,32 @@ export async function saveSettings(_prev, fd) {
   await saveSetting("tracking", { ...tracking, gtm_id: gtm });
   invalidateStore();
   return { ok: "Settings saved" };
+}
+
+// ---------------- size guide ----------------
+export async function saveSizeGuide(_prev, fd) {
+  await requireAdmin();
+  const guide = await getSetting("size_guide");
+  const out = { ...guide, intro: str(fd, "intro"), fit_note: str(fd, "fit_note") };
+  for (const [gender, measures] of Object.entries(SIZE_MEASURES)) {
+    const rows = [];
+    for (let i = 0; i < 20; i++) {
+      if (!fd.has(`${gender}.${i}.size`)) break;
+      const size = str(fd, `${gender}.${i}.size`).slice(0, 20);
+      if (!size) continue;
+      const row = { size };
+      for (const [key, label] of measures) {
+        const v = str(fd, `${gender}.${i}.${key}`).replace(/\s+/g, "");
+        if (v && !parseRange(v)) return { error: `${gender === "men" ? "Men" : "Women"} ${size}: "${label}" should be a number or a range like 37-39` };
+        row[key] = v;
+      }
+      rows.push(row);
+    }
+    out[gender] = rows;
+  }
+  await saveSetting("size_guide", out);
+  invalidateStore();
+  return { ok: "Size guide saved" };
 }
 
 // ---------------- admin users ----------------

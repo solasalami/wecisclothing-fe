@@ -193,7 +193,10 @@ export default function CheckoutForm({ customer, shipping, showrooms, paymentMet
         <button type="submit" disabled={pending || !quote || !payment || quote.problems.length > 0} className="btn-primary mt-6 w-full">
           {pending ? "Processing…" : payment === "opay" ? `Pay ${formatNaira(quote?.total ?? 0)}` : "Place order"}
         </button>
-        <p className="mt-3 text-center text-xs text-muted">All prices in Nigerian Naira (NGN).</p>
+        <p className="mt-3 text-center text-xs text-muted">
+          All prices in Nigerian Naira (NGN). See our{" "}
+          <Link href="/pages/shipping-and-returns" target="_blank" className="underline">shipping &amp; returns policy</Link>.
+        </p>
       </aside>
     </form>
   );
