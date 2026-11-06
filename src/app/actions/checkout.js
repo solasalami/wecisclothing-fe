@@ -5,6 +5,7 @@ import { getSettings } from "@/lib/settings";
 import { getCustomer } from "@/lib/auth";
 import { priceCart, shippingFee, orderTotal, createOrder, getOrderByNumber, orderAccessToken, checkOrderAccessToken, DELIVERY_METHODS } from "@/lib/orders";
 import { startOnlinePayment, onlinePaymentAvailable } from "@/lib/payments";
+import { verifiedCustomerByEmail, rememberAddress } from "@/lib/customers";
 
 const lineSchema = z.object({ productId: z.coerce.number().int().positive(), size: z.string().nullable().optional(), quantity: z.coerce.number().int().min(1).max(20) });
 
@@ -44,6 +45,7 @@ const checkoutSchema = z
       state: z.string().trim().max(100).optional().default(""),
     }),
     paymentMethod: z.enum(["opay", "bank_transfer"]),
+    saveAddress: z.boolean().optional().default(false),
     utm: z.record(z.string(), z.any()).nullable().optional(),
   })
   .superRefine((v, ctx) => {
@@ -71,7 +73,13 @@ export async function placeOrder(input) {
   if (!priced.items.length) return { ok: false, error: "Your bag is empty" };
 
   const fee = shippingFee(data.delivery.method, priced.subtotal, settings.shipping);
-  const customer = await getCustomer();
+  // Signed in: the order belongs to the account. Signed out but the email has a
+  // confirmed account: attach it too, so it shows up when they sign in.
+  const customer = (await getCustomer()) || (await verifiedCustomerByEmail(data.contact.email));
+  const signedIn = customer && "first_name" in customer;
+  if (signedIn && data.saveAddress && data.delivery.method.startsWith("delivery_")) {
+    await rememberAddress(customer.id, data.delivery).catch((e) => console.error("Save address failed", e));
+  }
   const order = await createOrder({
     customer,
     contact: data.contact,

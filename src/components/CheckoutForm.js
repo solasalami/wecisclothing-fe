@@ -6,13 +6,17 @@ import ProductImage from "./ProductImage";
 import OrderTotals from "./OrderTotals";
 import { formatNaira } from "@/lib/format";
 import { quoteCart, placeOrder } from "@/app/actions/checkout";
+import { NG_STATES } from "@/lib/ng-states";
 import { trackBeginCheckout, trackAddShippingInfo, trackAddPaymentInfo, readAttribution } from "@/lib/analytics";
 
-const NG_STATES = ["Lagos","Abia","Abuja (FCT)","Adamawa","Akwa Ibom","Anambra","Bauchi","Bayelsa","Benue","Borno","Cross River","Delta","Ebonyi","Edo","Ekiti","Enugu","Gombe","Imo","Jigawa","Kaduna","Kano","Katsina","Kebbi","Kogi","Kwara","Nasarawa","Niger","Ogun","Ondo","Osun","Oyo","Plateau","Rivers","Sokoto","Taraba","Yobe","Zamfara"];
 
-export default function CheckoutForm({ customer, shipping, showrooms, paymentMethods }) {
+export default function CheckoutForm({ customer, addresses = [], shipping, showrooms, paymentMethods }) {
   const { lines, ready, syncPrices, clear } = useCart();
-  const [method, setMethod] = useState("delivery_lagos");
+  const defaultAddress = addresses.find((a) => a.is_default) || addresses[0];
+  const methodFor = (a) => (a && a.state !== "Lagos" ? "delivery_nationwide" : "delivery_lagos");
+  const [method, setMethod] = useState(methodFor(defaultAddress));
+  const [addrId, setAddrId] = useState(defaultAddress?.id ?? "new"); // saved address id, or "new"
+  const savedAddress = addresses.find((a) => a.id === addrId);
   const [payment, setPayment] = useState(paymentMethods[0]?.id || "");
   const [quote, setQuote] = useState(null);
   const [error, setError] = useState("");
@@ -63,14 +67,16 @@ export default function CheckoutForm({ customer, shipping, showrooms, paymentMet
         last_name: f.get("last_name"),
         email: f.get("email"),
         phone: f.get("phone"),
-        notes: f.get("notes") || "",
+        notes: [
+          isDelivery && savedAddress?.phone ? `Delivery phone: ${savedAddress.phone}` : "",
+          f.get("notes") || "",
+        ].filter(Boolean).join("\n"),
       },
-      delivery: {
-        method,
-        address_line: f.get("address_line") || "",
-        city: f.get("city") || "",
-        state: f.get("state") || "",
-      },
+      delivery:
+        isDelivery && savedAddress
+          ? { method, address_line: savedAddress.address_line, city: savedAddress.city, state: savedAddress.state }
+          : { method, address_line: f.get("address_line") || "", city: f.get("city") || "", state: f.get("state") || "" },
+      saveAddress: Boolean(customer && isDelivery && !savedAddress && f.get("save_address")),
       paymentMethod: payment,
       utm: readAttribution(),
     };
@@ -128,7 +134,34 @@ export default function CheckoutForm({ customer, shipping, showrooms, paymentMet
             ))}
           </div>
           {shipping.freeThreshold > 0 && <p className="mt-2 text-xs text-muted">Free delivery on orders over {formatNaira(shipping.freeThreshold)}.</p>}
-          {isDelivery && (
+          {isDelivery && addresses.length > 0 && (
+            <div className="mt-4 space-y-2">
+              <p className="label">Deliver to</p>
+              {addresses.map((a) => (
+                <label key={a.id} className={`flex cursor-pointer items-start gap-3 border p-3 text-sm ${addrId === a.id ? "border-gold bg-gold-light/40" : "border-line"}`}>
+                  <input
+                    type="radio"
+                    name="saved_address"
+                    checked={addrId === a.id}
+                    onChange={() => {
+                      setAddrId(a.id);
+                      setMethod(methodFor(a));
+                    }}
+                    className="mt-1"
+                  />
+                  <span>
+                    <span className="block font-medium">{a.label || "Saved address"}{a.is_default ? <span className="ml-2 text-xs text-muted">(default)</span> : null}</span>
+                    <span className="block text-muted">{a.address_line}, {a.city}, {a.state}</span>
+                  </span>
+                </label>
+              ))}
+              <label className={`flex cursor-pointer items-center gap-3 border p-3 text-sm ${addrId === "new" ? "border-gold bg-gold-light/40" : "border-line"}`}>
+                <input type="radio" name="saved_address" checked={addrId === "new"} onChange={() => setAddrId("new")} />
+                <span className="font-medium">Use a different address</span>
+              </label>
+            </div>
+          )}
+          {isDelivery && !savedAddress && (
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
               <div className="sm:col-span-2">
                 <Field label="Street address" name="address_line" autoComplete="street-address" required />
@@ -141,6 +174,11 @@ export default function CheckoutForm({ customer, shipping, showrooms, paymentMet
                   {NG_STATES.map((s) => <option key={s}>{s}</option>)}
                 </select>
               </div>
+              {customer && (
+                <label className="flex items-center gap-2 text-sm sm:col-span-2">
+                  <input type="checkbox" name="save_address" defaultChecked className="h-4 w-4" /> Save this address to my account
+                </label>
+              )}
             </div>
           )}
           <div className="mt-4">

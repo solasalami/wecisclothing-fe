@@ -19,11 +19,11 @@ export function slugify(text) {
     .slice(0, 200);
 }
 
-export function formatDate(value) {
+export function formatDate(value, { dateOnly = false } = {}) {
   if (!value) return "";
   return new Date(value).toLocaleString("en-NG", {
     dateStyle: "medium",
-    timeStyle: "short",
+    ...(dateOnly ? {} : { timeStyle: "short" }),
     timeZone: "Africa/Lagos",
   });
 }

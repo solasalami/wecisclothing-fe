@@ -45,6 +45,7 @@ The live version of this checklist is in **Admin, Go-live checklist** (/admin/go
 - [ ] Check the measurements in Admin, Size guide against real garments, and the timelines and return rules in Admin, Info pages, Shipping & Returns.
 - [ ] Run `db/fixes/2026-11-06-content-cleanup.sql` on the live database (removes the old OpenCart link, fixes "Wecis Clothings", the Terms currency line and the Privacy contact email, and removes pasted divider lines).
 - [ ] Run `db/fixes/2026-11-06-privacy-policy.sql` on the live database (Privacy Policy rewritten for the Nigeria Data Protection Act 2023).
+- [ ] Run `db/fixes/2026-11-06-customer-accounts.sql` on the live database **before** deploying the account update (saved addresses and email confirmation). Without it, the account page and checkout will error.
 - [ ] Cancel or delete test orders.
 
 **Email**

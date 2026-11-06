@@ -179,3 +179,28 @@ ${totalsText(order)}
 Open in admin: ${adminUrl}`;
   return { subject, html: layout({ siteUrl, preheader: `${order.first_name} ${order.last_name} paid ${formatNaira(order.total)}`, body, store, showrooms: [] }), text };
 }
+
+/** Customer: "Confirm your email". */
+export function verifyEmailEmail({ customer, url, store, siteUrl }) {
+  const subject = "Confirm your email for your Wecis Clothing account";
+  const body = `
+    <tr><td style="padding:32px 32px 8px;">
+      <h1 style="margin:0;font:400 28px/1.25 ${SERIF};color:${C.ink};">Hello ${esc(customer.first_name)},</h1>
+      <p style="margin:14px 0 0;font:15px/1.6 ${SANS};color:${C.ink};">Please confirm that this is your email address. Once you do, any orders you placed with ${esc(customer.email)} before you created your account will appear in your account too.</p>
+    </td></tr>
+    <tr><td align="center" style="padding:24px 32px 12px;">
+      <a href="${esc(url)}" style="display:inline-block;background:${C.gold};color:${C.ink};font:600 12px/1 ${SANS};letter-spacing:3px;text-transform:uppercase;text-decoration:none;padding:15px 28px;">Confirm my email</a>
+    </td></tr>
+    <tr><td style="padding:8px 32px 28px;">
+      <p style="margin:0;font:13px/1.6 ${SANS};color:${C.muted};">This link works for 3 days. If you didn't create an account with us, you can ignore this email.</p>
+    </td></tr>`;
+  const text = `Hello ${customer.first_name},
+
+Please confirm your email address for your Wecis Clothing account. Once you do, any orders you placed with ${customer.email} before you created your account will appear in your account too.
+
+Confirm my email: ${url}
+
+This link works for 3 days. If you didn't create an account with us, you can ignore this email.
+${store.name}`;
+  return { subject, html: layout({ siteUrl, preheader: "Confirm your email to see all your orders.", body, store, showrooms: [] }), text };
+}

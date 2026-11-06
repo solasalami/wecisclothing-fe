@@ -9,7 +9,7 @@ import { telLink, whatsappLink } from "@/lib/format";
 import { isCampaignLive } from "@/lib/campaign";
 import Marquee from "./Marquee";
 
-export default function Header({ categories, store, campaign }) {
+export default function Header({ categories, store, campaign, account }) {
   const campaignLive = isCampaignLive(campaign);
   const { count, ready, setDrawerOpen } = useCart();
   const [open, setOpen] = useState(false);
@@ -105,9 +105,24 @@ export default function Header({ categories, store, campaign }) {
           <button onClick={() => setSearchOpen((v) => !v)} aria-label="Search" className="p-1 hover:text-gold-dark">
             <SearchIcon />
           </button>
-          <Link href="/account" aria-label="My account" className="hidden p-1 hover:text-gold-dark sm:block">
-            <UserIcon />
-          </Link>
+          {account ? (
+            <Link
+              href="/account"
+              aria-label={`My account, signed in as ${account.firstName}`}
+              title={`Signed in as ${account.firstName}`}
+              className="hidden items-center gap-1.5 p-1 text-gold-dark hover:text-ink sm:flex"
+            >
+              <span className="relative">
+                <UserIcon />
+                <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-white bg-gold" aria-hidden="true" />
+              </span>
+              <span className="hidden max-w-24 truncate text-xs font-medium uppercase tracking-wider xl:inline">Hi, {account.firstName}</span>
+            </Link>
+          ) : (
+            <Link href="/account" aria-label="My account, sign in" title="Sign in" className="hidden p-1 hover:text-gold-dark sm:block">
+              <UserIcon />
+            </Link>
+          )}
           <button onClick={() => setDrawerOpen(true)} aria-label="Open cart" className="relative p-1 hover:text-gold-dark">
             <BagIcon />
             {ready && count > 0 && (
@@ -159,8 +174,8 @@ export default function Header({ categories, store, campaign }) {
                   )}
                 </div>
               ))}
-              <Link href="/account" className="block py-3 font-medium uppercase tracking-wider">
-                My Account
+              <Link href="/account" className={`block py-3 font-medium uppercase tracking-wider ${account ? "text-gold-dark" : ""}`}>
+                {account ? `My Account · ${account.firstName}` : "Sign in / My Account"}
               </Link>
             </nav>
             <div className="mt-6 space-y-3">

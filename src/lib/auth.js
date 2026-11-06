@@ -87,7 +87,7 @@ export async function getCustomer() {
   const payload = await verifyToken((await cookies()).get(CUSTOMER_COOKIE)?.value);
   if (payload?.kind !== "customer") return null;
   return queryOne(
-    "SELECT id, first_name, last_name, email, phone FROM customers WHERE id = ? AND is_active = 1",
+    "SELECT id, first_name, last_name, email, phone, email_verified_at, created_at FROM customers WHERE id = ? AND is_active = 1",
     [payload.sub]
   );
 }
