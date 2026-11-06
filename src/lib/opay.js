@@ -7,19 +7,33 @@ const BASE = {
   production: "https://api.opaycheckout.com",
 };
 
+// Trim values: keys pasted into dashboards often pick up stray spaces/newlines.
+const env = (name) => (process.env[name] || "").trim();
+
 function cfg() {
-  const env = process.env.OPAY_ENV === "production" ? "production" : "sandbox";
+  const mode = env("OPAY_ENV").toLowerCase() === "production" ? "production" : "sandbox";
   return {
-    base: BASE[env],
-    merchantId: process.env.OPAY_MERCHANT_ID,
-    publicKey: process.env.OPAY_PUBLIC_KEY,
-    secretKey: process.env.OPAY_SECRET_KEY,
+    mode,
+    base: BASE[mode],
+    merchantId: env("OPAY_MERCHANT_ID"),
+    publicKey: env("OPAY_PUBLIC_KEY"),
+    secretKey: env("OPAY_SECRET_KEY"),
   };
 }
 
+export const OPAY_REQUIRED_VARS = ["OPAY_MERCHANT_ID", "OPAY_PUBLIC_KEY", "OPAY_SECRET_KEY"];
+
+/** Names (never values) of required OPay variables missing at runtime. */
+export function opayMissingVars() {
+  return OPAY_REQUIRED_VARS.filter((n) => !env(n));
+}
+
 export function opayConfigured() {
-  const c = cfg();
-  return Boolean(c.merchantId && c.publicKey && c.secretKey);
+  return opayMissingVars().length === 0;
+}
+
+export function opayMode() {
+  return cfg().mode;
 }
 
 function sortKeys(value) {

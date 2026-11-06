@@ -2,7 +2,7 @@ import Link from "next/link";
 import { query } from "@/lib/db";
 import { formatNaira } from "@/lib/format";
 import OrdersTable from "@/components/admin/OrdersTable";
-import { opayConfigured } from "@/lib/opay";
+import { opayConfigured, opayMissingVars, opayMode } from "@/lib/opay";
 import { getSettings } from "@/lib/settings";
 import { campaignStatus } from "@/lib/campaign";
 
@@ -18,7 +18,13 @@ export default async function Dashboard() {
     getSettings(),
   ]);
   const checks = [
-    [opayConfigured(), "OPay keys configured", "Add OPAY_MERCHANT_ID / OPAY_PUBLIC_KEY / OPAY_SECRET_KEY in Netlify environment variables."],
+    [
+      opayConfigured() && settings.payments.opay_enabled,
+      opayConfigured() ? `OPay connected (${opayMode()} mode)` : "OPay keys configured",
+      !opayConfigured()
+        ? `Not visible to the running site: ${opayMissingVars().join(", ")}. In Netlify → Environment variables, add them with scope "Functions" (or All scopes), then redeploy.`
+        : "OPay is switched off in Settings → Payments, so checkout won't offer it.",
+    ],
     [!!settings.tracking.gtm_id, "Google Tag Manager installed", "Add your GTM container ID in Settings."],
     [campaignStatus(settings.campaign) === "live", `${settings.campaign.name} campaign live`, `Status: ${campaignStatus(settings.campaign)} — manage it under Seasonal campaign.`],
   ];
