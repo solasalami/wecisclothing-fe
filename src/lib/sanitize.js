@@ -1,5 +1,8 @@
 // Allow-list HTML sanitizer for admin-authored rich text (product descriptions, pages).
-const ALLOWED = new Set(["p", "br", "strong", "b", "em", "i", "u", "ul", "ol", "li", "h2", "h3", "h4", "a", "blockquote", "hr"]);
+const ALLOWED = new Set([
+  "p", "br", "strong", "b", "em", "i", "u", "ul", "ol", "li", "h2", "h3", "h4", "a", "blockquote",
+  "table", "thead", "tbody", "tr", "th", "td",
+]);
 
 function safeHref(href) {
   const h = String(href || "").trim().replace(/&amp;/g, "&");
@@ -22,7 +25,24 @@ export function sanitizeHtml(input) {
       const href = safeHref(m ? m[2] ?? m[3] ?? m[4] : "");
       return href ? `<a href="${href}" rel="noopener noreferrer">` : "<a>";
     }
-    return t === "br" || t === "hr" ? `<${t}>` : `<${t}>`;
+    return `<${t}>`;
   });
-  return html.replace(/<p>\s*<\/p>/g, "").trim();
+  return tidyPastedHtml(html);
+}
+
+/**
+ * Removes formatting that text pasted from ChatGPT and similar tools carries
+ * and that makes copy look machine-made: divider lines between sections (<hr>
+ * is not in ALLOWED, so those are already gone), paragraphs wrapped inside list
+ * items (extra-wide gaps), bold text inside headings and stray trailing <br>s.
+ */
+export function tidyPastedHtml(html) {
+  return String(html || "")
+    .replace(/<li>\s*<p>/g, "<li>")
+    .replace(/<\/p>\s*<\/li>/g, "</li>")
+    .replace(/<(h[2-4])>([\s\S]*?)<\/\1>/g, (_m, h, inner) => `<${h}>${inner.replace(/<\/?(strong|b)>/g, "")}</${h}>`)
+    .replace(/(<br>\s*)+$/g, "")
+    .replace(/<\/p>\s*<br>/g, "</p>")
+    .replace(/<p>\s*<\/p>/g, "")
+    .trim();
 }

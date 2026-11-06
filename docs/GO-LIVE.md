@@ -43,7 +43,7 @@ The live version of this checklist is in **Admin, Go-live checklist** (/admin/go
 - [ ] Review VAT in Admin, Settings (7.5%) and tick **Price includes VAT** on any product whose price already contains VAT. Unticked products get VAT added at checkout.
 - [ ] Run `db/fixes/2026-11-06-shipping-and-returns.sql` on the live database (adds the Shipping & Returns page and retires the old Delivery Information page).
 - [ ] Check the measurements in Admin, Size guide against real garments, and the timelines and return rules in Admin, Info pages, Shipping & Returns.
-- [ ] Run `db/fixes/2026-11-06-content-cleanup.sql` on the live database (removes the old OpenCart link, fixes "Wecis Clothings", the Terms naira symbol and the Privacy contact email).
+- [ ] Run `db/fixes/2026-11-06-content-cleanup.sql` on the live database (removes the old OpenCart link, fixes "Wecis Clothings", the Terms currency line and the Privacy contact email, and removes pasted divider lines).
 - [ ] Cancel or delete test orders.
 
 **Email**

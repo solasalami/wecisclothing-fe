@@ -16,7 +16,7 @@ export default async function InfoPage({ params }) {
   return (
     <article className="mx-auto max-w-3xl px-4 py-12">
       <h1 className="mb-8 text-center text-4xl">{page.title}</h1>
-      <div className="prose-wecis" dangerouslySetInnerHTML={{ __html: page.body || "" }} />
+      <div className="prose-wecis prose-sections" dangerouslySetInnerHTML={{ __html: page.body || "" }} />
     </article>
   );
 }
