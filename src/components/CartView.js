@@ -55,7 +55,7 @@ export default function CartView() {
               <span>Subtotal</span>
               <span className="font-medium">{formatNaira(subtotal)}</span>
             </div>
-            <p className="mt-2 text-xs text-muted">Delivery calculated at checkout. Free pick-up from our Ikeja and VI showrooms.</p>
+            <p className="mt-2 text-xs text-muted">VAT and delivery calculated at checkout. Free pick-up from our Ikeja and VI showrooms.</p>
             <Link href="/checkout" className="btn-primary mt-6 w-full">Checkout</Link>
             <Link href="/shop" className="mt-3 block text-center text-sm underline">Continue shopping</Link>
           </aside>

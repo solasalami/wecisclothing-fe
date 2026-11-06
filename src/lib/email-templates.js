@@ -1,6 +1,7 @@
 // Email-client-safe HTML (tables + inline styles) for order emails. No em dashes (house style).
 import { formatNaira, formatDate, whatsappLink, telLink } from "./format";
 import { DELIVERY_METHODS } from "./orders";
+import { vatRows } from "./vat";
 
 const C = { ink: "#262626", muted: "#6b6b6b", gold: "#c9a227", goldDark: "#9c7a12", champagne: "#f6efd9", line: "#e8e2d0", bg: "#f4f1ea", white: "#ffffff" };
 const SERIF = "Georgia, 'Times New Roman', serif";
@@ -51,7 +52,9 @@ function itemsTable(order, siteUrl) {
         i.image ? `<img src="${esc(abs(siteUrl, i.image))}" width="56" height="70" alt="" style="display:block;width:56px;height:70px;object-fit:cover;border:0;">` : ""
       }</td>
   <td valign="top" style="padding:12px 0;border-bottom:1px solid ${C.line};font:14px/1.5 ${SANS};color:${C.ink};">
-    ${esc(i.name)}<br><span style="color:${C.muted};font-size:13px;">${i.size ? `Size: ${esc(i.size)} &middot; ` : ""}Qty: ${i.quantity} &middot; ${esc(formatNaira(i.unit_price))} each</span>
+    ${esc(i.name)}<br><span style="color:${C.muted};font-size:13px;">${i.size ? `Size: ${esc(i.size)} &middot; ` : ""}Qty: ${i.quantity} &middot; ${esc(formatNaira(i.unit_price))} each${
+      Number(i.vat_amount) > 0 ? ` &middot; ${i.vat_inclusive ? "VAT inclusive" : "+ VAT"}` : ""
+    }</span>
   </td>
   <td valign="top" align="right" style="padding:12px 0;border-bottom:1px solid ${C.line};font:14px/1.5 ${SANS};color:${C.ink};white-space:nowrap;">${esc(formatNaira(i.line_total))}</td>
 </tr>`
@@ -61,9 +64,26 @@ function itemsTable(order, siteUrl) {
     `<tr><td></td><td style="padding:${strong ? "10px" : "4px"} 0 0;font:${strong ? "600 16px" : "14px"}/1.5 ${SANS};color:${C.ink};">${label}</td><td align="right" style="padding:${strong ? "10px" : "4px"} 0 0;font:${strong ? "600 16px" : "14px"}/1.5 ${SANS};color:${C.ink};white-space:nowrap;">${value}</td></tr>`;
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0">${rows}
     ${total("Subtotal", esc(formatNaira(order.subtotal)))}
+    ${vatRows(order).filter((r) => r.kind === "added").map((r) => total(esc(r.label), esc(formatNaira(r.amount)))).join("")}
     ${total("Delivery", Number(order.shipping_fee) ? esc(formatNaira(order.shipping_fee)) : "Free")}
     ${total("Total", esc(formatNaira(order.total)), true)}
+    ${vatRows(order)
+      .filter((r) => r.kind === "included")
+      .map((r) => `<tr><td></td><td style="padding:4px 0 0;font:12px/1.5 ${SANS};color:${C.muted};">${esc(r.label)}</td><td align="right" style="padding:4px 0 0;font:12px/1.5 ${SANS};color:${C.muted};white-space:nowrap;">${esc(formatNaira(r.amount))}</td></tr>`)
+      .join("")}
   </table>`;
+}
+
+/** Plain-text totals block for the text version of emails. */
+function totalsText(order) {
+  const rows = vatRows(order);
+  return [
+    `Subtotal: ${formatNaira(order.subtotal)}`,
+    ...rows.filter((r) => r.kind === "added").map((r) => `${r.label}: ${formatNaira(r.amount)}`),
+    `Delivery: ${Number(order.shipping_fee) ? formatNaira(order.shipping_fee) : "Free"}`,
+    `Total: ${formatNaira(order.total)}`,
+    ...rows.filter((r) => r.kind === "included").map((r) => `${r.label}: ${formatNaira(r.amount)}`),
+  ].join("\n");
 }
 
 function itemsText(order) {
@@ -114,9 +134,7 @@ export function orderConfirmationEmail({ order, store, showrooms, siteUrl, viewU
 Your Wecis Clothing order ${order.order_number} is confirmed. We've received your payment of ${formatNaira(order.total)}.
 
 ${itemsText(order)}
-Subtotal: ${formatNaira(order.subtotal)}
-Delivery: ${Number(order.shipping_fee) ? formatNaira(order.shipping_fee) : "Free"}
-Total: ${formatNaira(order.total)}
+${totalsText(order)}
 
 Delivery: ${method}${address ? `\n${address}` : ""}
 Payment: ${PAYMENT_LABELS[order.payment_method] || order.payment_method}${order.payment_reference ? ` (Ref: ${order.payment_reference})` : ""}
@@ -156,7 +174,7 @@ ${method}${address ? `\n${address}` : ""}
 Payment: ${PAYMENT_LABELS[order.payment_method] || order.payment_method}${order.payment_reference ? ` (Ref ${order.payment_reference})` : ""}
 ${order.notes ? `Notes: ${order.notes}\n` : ""}
 ${itemsText(order)}
-Total: ${formatNaira(order.total)}
+${totalsText(order)}
 
 Open in admin: ${adminUrl}`;
   return { subject, html: layout({ siteUrl, preheader: `${order.first_name} ${order.last_name} paid ${formatNaira(order.total)}`, body, store, showrooms: [] }), text };

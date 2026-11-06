@@ -2,6 +2,8 @@ import "server-only";
 import crypto from "node:crypto";
 import { query, queryOne, transaction } from "./db";
 import { getProductsByIds, packagesAvailable } from "./catalog";
+import { getSetting } from "./settings";
+import { applyVat } from "./vat";
 
 export const DELIVERY_METHODS = {
   delivery_lagos: "Home delivery in Lagos",
@@ -20,8 +22,13 @@ export function shippingFee(method, subtotal, shipping) {
   return Number(method === "delivery_lagos" ? shipping.delivery_lagos_fee : shipping.delivery_nationwide_fee) || 0;
 }
 
+/** Amount payable: shelf prices + VAT added on VAT-exclusive items + delivery. */
+export function orderTotal({ subtotal, vat_added, fee }) {
+  return Number(subtotal) + Number(vat_added || 0) + Number(fee || 0);
+}
+
 /**
- * Re-price cart lines against the database. Client prices are never trusted.
+ * Re-price cart lines against the database (including VAT). Client prices are never trusted.
  * @param {{productId:number, size?:string, quantity:number}[]} lines
  */
 export async function priceCart(lines) {
@@ -63,10 +70,21 @@ export async function priceCart(lines) {
       unit_price: Number(p.price),
       quantity: l.quantity,
       line_total: Number(p.price) * l.quantity,
+      vat_inclusive: p.vat_inclusive,
     });
   }
   const subtotal = items.reduce((s, i) => s + i.line_total, 0);
-  return { items, subtotal, problems };
+  const tax = await getSetting("tax");
+  const vat = applyVat(items, tax);
+  return {
+    items: vat.items,
+    subtotal,
+    vat_rate: vat.rate,
+    vat_label: tax.vat_label || "VAT",
+    vat_added: vat.vat_added,
+    vat_included: vat.vat_included,
+    problems,
+  };
 }
 
 function newOrderNumber() {
@@ -75,7 +93,7 @@ function newOrderNumber() {
   return `WC${ymd}-${crypto.randomInt(1000, 9999)}${crypto.randomInt(10, 99)}`;
 }
 
-export async function createOrder({ customer, contact, delivery, items, subtotal, fee, paymentMethod, utm }) {
+export async function createOrder({ customer, contact, delivery, items, subtotal, vat, fee, paymentMethod, utm }) {
   return transaction(async (tx) => {
     let orderNumber;
     for (let i = 0; i < 5; i++) {
@@ -83,11 +101,12 @@ export async function createOrder({ customer, contact, delivery, items, subtotal
       const exists = await tx.query("SELECT id FROM orders WHERE order_number = ?", [orderNumber]);
       if (!exists.length) break;
     }
-    const total = subtotal + fee;
+    const total = orderTotal({ subtotal, vat_added: vat.vat_added, fee });
     const res = await tx.query(
       `INSERT INTO orders (order_number, customer_id, first_name, last_name, email, phone, delivery_method,
-        address_line, city, state, notes, subtotal, shipping_fee, total, currency, payment_method, payment_status, utm)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?, 'NGN', ?, 'unpaid', ?)`,
+        address_line, city, state, notes, subtotal, vat_rate, vat_added, vat_included, shipping_fee, total, currency,
+        payment_method, payment_status, utm)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?, 'NGN', ?, 'unpaid', ?)`,
       [
         orderNumber,
         customer?.id ?? null,
@@ -101,6 +120,9 @@ export async function createOrder({ customer, contact, delivery, items, subtotal
         delivery.state || null,
         contact.notes || null,
         subtotal,
+        vat.vat_rate,
+        vat.vat_added,
+        vat.vat_included,
         fee,
         total,
         paymentMethod,
@@ -110,9 +132,9 @@ export async function createOrder({ customer, contact, delivery, items, subtotal
     const orderId = res.insertId;
     for (const it of items) {
       await tx.query(
-        `INSERT INTO order_items (order_id, product_id, name, sku, size, image, unit_price, quantity, line_total)
-         VALUES (?,?,?,?,?,?,?,?,?)`,
-        [orderId, it.product_id, it.name, it.sku, it.size, it.image, it.unit_price, it.quantity, it.line_total]
+        `INSERT INTO order_items (order_id, product_id, name, sku, size, image, unit_price, quantity, line_total, vat_inclusive, vat_amount)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
+        [orderId, it.product_id, it.name, it.sku, it.size, it.image, it.unit_price, it.quantity, it.line_total, it.vat_inclusive, it.vat_amount]
       );
     }
     return { id: orderId, order_number: orderNumber, total };

@@ -8,6 +8,7 @@ import { updateOrder, markPaidManually, resendOrderEmail } from "@/app/admin/act
 import { emailEnabled, emailMissingVars } from "@/lib/email";
 import { Check } from "@/components/admin/Fields";
 import { parseJson } from "@/lib/db";
+import OrderTotals from "@/components/OrderTotals";
 
 export const metadata = { title: "Order" };
 
@@ -42,6 +43,9 @@ export default async function OrderAdmin({ params, searchParams }) {
                     <td className="py-2">
                       {i.product_id ? <Link href={`/admin/products/${i.product_id}`} className="underline">{i.name}</Link> : i.name}
                       {i.size && <span className="text-muted"> · Size {i.size}</span>}
+                      {Number(i.vat_amount) > 0 && (
+                        <span className="text-muted"> · {i.vat_inclusive ? "VAT incl." : "+ VAT"} {formatNaira(i.vat_amount)}</span>
+                      )}
                     </td>
                     <td className="text-right">{i.quantity} × {formatNaira(i.unit_price)}</td>
                     <td className="w-32 text-right">{formatNaira(i.line_total)}</td>
@@ -49,11 +53,7 @@ export default async function OrderAdmin({ params, searchParams }) {
                 ))}
               </tbody>
             </table>
-            <dl className="ml-auto max-w-xs space-y-1 text-sm">
-              <div className="flex justify-between"><dt>Subtotal</dt><dd>{formatNaira(o.subtotal)}</dd></div>
-              <div className="flex justify-between"><dt>Delivery</dt><dd>{formatNaira(o.shipping_fee)}</dd></div>
-              <div className="flex justify-between font-medium"><dt>Total</dt><dd>{formatNaira(o.total)}</dd></div>
-            </dl>
+            <OrderTotals o={o} className="ml-auto max-w-xs" totalClassName="font-medium" />
           </Card>
           <Card title="Payments">
             <p className="text-sm">Method: <strong className="capitalize">{o.payment_method.replace("_", " ")}</strong>{o.paid_at && <> · Paid {formatDate(o.paid_at)}</>}</p>

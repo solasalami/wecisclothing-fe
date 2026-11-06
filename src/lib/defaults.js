@@ -22,6 +22,11 @@ export const DEFAULT_SETTINGS = {
     bank_transfer_enabled: true,
     bank_transfer_details: "Bank: \nAccount name: Wecis Clothing\nAccount number: \nUse your order number as the payment reference.",
   },
+  tax: {
+    vat_enabled: true,
+    vat_rate: 7.5, // percent; Nigerian VAT is 7.5%
+    vat_label: "VAT",
+  },
   tracking: {
     gtm_id: "", // overrides NEXT_PUBLIC_GTM_ID when set
   },

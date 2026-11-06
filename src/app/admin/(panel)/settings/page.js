@@ -9,7 +9,7 @@ export const metadata = { title: "Settings" };
 
 export default async function SettingsAdmin() {
   await requireOwner();
-  const { store, shipping, payments, tracking } = await getSettings();
+  const { store, shipping, payments, tracking, tax } = await getSettings();
   return (
     <div className="max-w-4xl">
       <PageHeader title="Settings" />
@@ -36,6 +36,17 @@ export default async function SettingsAdmin() {
             <Field label="Free delivery over" name="free_delivery_threshold" type="number" min="0" defaultValue={shipping.free_delivery_threshold} hint="0 = never free" />
           </div>
           <Check label="Allow free pick-up from showrooms" name="pickup_enabled" defaultChecked={shipping.pickup_enabled} />
+        </Card>
+        <Card title="Tax (VAT)">
+          <Check
+            label="Charge VAT"
+            name="vat_enabled"
+            defaultChecked={tax.vat_enabled}
+            hint="Applies to every product. Each product is set as VAT inclusive (price already contains VAT) or VAT exclusive (VAT is added at checkout)."
+          />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="VAT rate (%)" name="vat_rate" type="number" min="0" max="100" step="0.01" defaultValue={tax.vat_rate} hint="Nigerian VAT is currently 7.5%. Shown at checkout, on order confirmations and in emails." />
+          </div>
         </Card>
         <Card title="Payments">
           <Check

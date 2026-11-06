@@ -4,6 +4,7 @@ import { getProductBySlug, getRelatedProducts, packagesAvailable } from "@/lib/c
 import { isCampaignLive } from "@/lib/campaign";
 import { getSettings } from "@/lib/settings";
 import { formatNaira, whatsappLink, telLink, stripHtml } from "@/lib/format";
+import { priceVatNote } from "@/lib/vat";
 import ProductGallery from "@/components/ProductGallery";
 import AddToCart from "@/components/AddToCart";
 import ProductGrid from "@/components/ProductGrid";
@@ -26,11 +27,12 @@ export default async function ProductPage({ params }) {
   const { slug } = await params;
   const product = await getProductBySlug(slug);
   if (!product) notFound();
-  const [related, { store, campaign }, packagesOk] = await Promise.all([getRelatedProducts(product), getSettings(), packagesAvailable()]);
+  const [related, { store, campaign, tax }, packagesOk] = await Promise.all([getRelatedProducts(product), getSettings(), packagesAvailable()]);
   const isPackage = product.kind === "package";
   const campaignLive = isCampaignLive(campaign);
   // Seasonal packages can't be bought outside their campaign (if configured).
   const purchasable = product.in_stock && (!isPackage || packagesOk);
+  const vatNote = priceVatNote(product.vat_inclusive, tax);
   const onSale = product.compare_at_price && Number(product.compare_at_price) > Number(product.price);
   const url = `${process.env.NEXT_PUBLIC_SITE_URL || ""}/product/${product.slug}`;
 
@@ -97,6 +99,7 @@ export default async function ProductPage({ params }) {
             {formatNaira(product.price)}
             {onSale && <span className="ml-3 text-lg text-muted line-through">{formatNaira(product.compare_at_price)}</span>}
           </p>
+          {vatNote && <p className="mt-1 text-xs text-muted">{vatNote}</p>}
           {product.short_description && <p className="mt-4 text-muted">{product.short_description}</p>}
 
           {product.package_items.length > 0 && (

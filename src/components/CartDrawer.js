@@ -52,6 +52,7 @@ export default function CartDrawer() {
               <span>Subtotal</span>
               <span>{formatNaira(subtotal)}</span>
             </div>
+            <p className="text-xs text-muted">VAT and delivery calculated at checkout.</p>
             <Link href="/checkout" onClick={() => setDrawerOpen(false)} className="btn-primary w-full">
               Checkout
             </Link>

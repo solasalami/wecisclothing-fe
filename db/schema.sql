@@ -27,6 +27,7 @@ CREATE TABLE IF NOT EXISTS products (
   package_items JSON NULL,            -- ["Agbada (3 piece)", "Cap", ...] for festive packages
   price DECIMAL(12,2) NOT NULL DEFAULT 0,
   compare_at_price DECIMAL(12,2) NULL, -- old price shown struck-through
+  vat_inclusive TINYINT(1) NOT NULL DEFAULT 0, -- 1 = price already includes VAT; 0 = VAT added at checkout
   sizes JSON NULL,                    -- ["S","M","L","XL","Custom"]
   stock_qty INT NOT NULL DEFAULT 0,
   track_stock TINYINT(1) NOT NULL DEFAULT 0,
@@ -85,9 +86,12 @@ CREATE TABLE IF NOT EXISTS orders (
   city VARCHAR(100) NULL,
   state VARCHAR(100) NULL,
   notes TEXT NULL,
-  subtotal DECIMAL(12,2) NOT NULL,
+  subtotal DECIMAL(12,2) NOT NULL,           -- sum of line totals at shelf prices
+  vat_rate DECIMAL(5,2) NOT NULL DEFAULT 0,  -- VAT % at the time of the order
+  vat_added DECIMAL(12,2) NOT NULL DEFAULT 0,    -- VAT added on top (VAT-exclusive items)
+  vat_included DECIMAL(12,2) NOT NULL DEFAULT 0, -- VAT already inside the subtotal (VAT-inclusive items)
   shipping_fee DECIMAL(12,2) NOT NULL DEFAULT 0,
-  total DECIMAL(12,2) NOT NULL,
+  total DECIMAL(12,2) NOT NULL,                -- subtotal + vat_added + shipping_fee
   currency CHAR(3) NOT NULL DEFAULT 'NGN',
   status ENUM('pending','processing','ready','shipped','completed','cancelled','refunded') NOT NULL DEFAULT 'pending',
   payment_method VARCHAR(30) NOT NULL,       -- opay | bank_transfer | mock
@@ -114,6 +118,8 @@ CREATE TABLE IF NOT EXISTS order_items (
   unit_price DECIMAL(12,2) NOT NULL,
   quantity INT NOT NULL,
   line_total DECIMAL(12,2) NOT NULL,
+  vat_inclusive TINYINT(1) NOT NULL DEFAULT 0,
+  vat_amount DECIMAL(12,2) NOT NULL DEFAULT 0,
   CONSTRAINT fk_item_order FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
   CONSTRAINT fk_item_product FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

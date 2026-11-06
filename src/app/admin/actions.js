@@ -67,6 +67,7 @@ export async function saveProduct(_prev, fd) {
     package_items: kind === "package" ? JSON.stringify(lines(fd.get("package_items"))) : null,
     price,
     compare_at_price: compare && compare > price ? compare : null,
+    vat_inclusive: bool(fd, "vat_inclusive"),
     sizes: JSON.stringify(csv(fd.get("sizes"))),
     stock_qty: Math.max(0, num(fd, "stock_qty") || 0),
     track_stock: bool(fd, "track_stock"),
@@ -380,6 +381,14 @@ export async function saveSettings(_prev, fd) {
   const shipping = await getSetting("shipping");
   const payments = await getSetting("payments");
   const tracking = await getSetting("tracking");
+  const tax = await getSetting("tax");
+  const vatRate = num(fd, "vat_rate");
+  if (vatRate == null || !(vatRate >= 0 && vatRate <= 100)) return { error: "VAT rate must be a percentage between 0 and 100" };
+  await saveSetting("tax", {
+    ...tax,
+    vat_enabled: !!bool(fd, "vat_enabled"),
+    vat_rate: vatRate,
+  });
   await saveSetting("store", {
     ...store,
     name: str(fd, "store_name") || store.name,

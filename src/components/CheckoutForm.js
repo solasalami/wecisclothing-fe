@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useCart } from "./CartProvider";
 import ProductImage from "./ProductImage";
+import OrderTotals from "./OrderTotals";
 import { formatNaira } from "@/lib/format";
 import { quoteCart, placeOrder } from "@/app/actions/checkout";
 import { trackBeginCheckout, trackAddShippingInfo, trackAddPaymentInfo, readAttribution } from "@/lib/analytics";
@@ -180,16 +181,13 @@ export default function CheckoutForm({ customer, shipping, showrooms, paymentMet
               <div className="flex-1">
                 <p>{l.name}</p>
                 {l.size && <p className="text-muted">Size: {l.size}</p>}
+                {vatNote(quote, l)}
               </div>
               <span>{formatNaira(l.price * l.quantity)}</span>
             </li>
           ))}
         </ul>
-        <dl className="mt-6 space-y-2 border-t border-line pt-4 text-sm">
-          <div className="flex justify-between"><dt>Subtotal</dt><dd>{formatNaira(quote?.subtotal ?? 0)}</dd></div>
-          <div className="flex justify-between"><dt>Delivery</dt><dd>{quote ? (quote.fee ? formatNaira(quote.fee) : "Free") : "…"}</dd></div>
-          <div className="flex justify-between border-t border-line pt-2 text-lg font-medium"><dt>Total</dt><dd>{formatNaira(quote?.total ?? 0)}</dd></div>
-        </dl>
+        <OrderTotals o={quote} className="mt-6 border-t border-line pt-4" />
         {quote?.problems?.length > 0 && <p className="mt-4 text-sm text-red-600">{quote.problems[0]}</p>}
         {error && <p className="mt-4 text-sm text-red-600" role="alert">{error}</p>}
         <button type="submit" disabled={pending || !quote || !payment || quote.problems.length > 0} className="btn-primary mt-6 w-full">
@@ -199,6 +197,15 @@ export default function CheckoutForm({ customer, shipping, showrooms, paymentMet
       </aside>
     </form>
   );
+}
+
+/** "+ VAT" / "VAT incl." under each line, once the server quote is in. */
+function vatNote(quote, line) {
+  if (!quote?.vat_rate) return null;
+  const item = quote.items.find((i) => i.product_id === line.productId && (i.size || null) === (line.size || null));
+  if (!item) return null;
+  const label = quote.vat_label || "VAT";
+  return <p className="text-xs text-muted">{item.vat_inclusive ? `${label} inclusive` : `+ ${label}`}</p>;
 }
 
 function Field({ label, name, type = "text", ...rest }) {

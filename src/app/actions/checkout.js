@@ -3,7 +3,7 @@ import { z } from "zod";
 import { unstable_rethrow } from "next/navigation";
 import { getSettings } from "@/lib/settings";
 import { getCustomer } from "@/lib/auth";
-import { priceCart, shippingFee, createOrder, getOrderByNumber, orderAccessToken, checkOrderAccessToken, DELIVERY_METHODS } from "@/lib/orders";
+import { priceCart, shippingFee, orderTotal, createOrder, getOrderByNumber, orderAccessToken, checkOrderAccessToken, DELIVERY_METHODS } from "@/lib/orders";
 import { startOnlinePayment, onlinePaymentAvailable } from "@/lib/payments";
 
 const lineSchema = z.object({ productId: z.coerce.number().int().positive(), size: z.string().nullable().optional(), quantity: z.coerce.number().int().min(1).max(20) });
@@ -13,10 +13,16 @@ export async function quoteCart(lines, deliveryMethod) {
   const priced = await priceCart(lines);
   const fee = deliveryMethod && DELIVERY_METHODS[deliveryMethod] ? shippingFee(deliveryMethod, priced.subtotal, shipping) : 0;
   return {
-    items: priced.items.map(({ product_id, size, unit_price, quantity, line_total, name }) => ({ product_id, size, unit_price, quantity, line_total, name })),
+    items: priced.items.map(({ product_id, size, unit_price, quantity, line_total, name, vat_inclusive, vat_amount }) => ({
+      product_id, size, unit_price, quantity, line_total, name, vat_inclusive, vat_amount,
+    })),
     subtotal: priced.subtotal,
+    vat_rate: priced.vat_rate,
+    vat_label: priced.vat_label,
+    vat_added: priced.vat_added,
+    vat_included: priced.vat_included,
     fee,
-    total: priced.subtotal + fee,
+    total: orderTotal({ subtotal: priced.subtotal, vat_added: priced.vat_added, fee }),
     problems: priced.problems,
   };
 }
@@ -72,6 +78,7 @@ export async function placeOrder(input) {
     delivery: data.delivery,
     items: priced.items,
     subtotal: priced.subtotal,
+    vat: priced,
     fee,
     paymentMethod: data.paymentMethod,
     utm: data.utm || null,

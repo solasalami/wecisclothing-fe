@@ -11,7 +11,7 @@ export async function packagesAvailable() {
 }
 
 const PRODUCT_COLUMNS = `
-  p.id, p.kind, p.name, p.slug, p.sku, p.short_description, p.price, p.compare_at_price,
+  p.id, p.kind, p.name, p.slug, p.sku, p.short_description, p.price, p.compare_at_price, p.vat_inclusive,
   p.stock_qty, p.track_stock, p.is_featured, p.sizes, p.badge, p.created_at,
   (SELECT url FROM product_images i WHERE i.product_id = p.id ORDER BY i.sort_order, i.id LIMIT 1) AS image,
   (SELECT url FROM product_images i WHERE i.product_id = p.id ORDER BY i.sort_order, i.id LIMIT 1 OFFSET 1) AS image_alt`;

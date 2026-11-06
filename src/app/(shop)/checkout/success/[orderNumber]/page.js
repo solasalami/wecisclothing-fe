@@ -7,6 +7,7 @@ import { getSettings } from "@/lib/settings";
 import { formatNaira, whatsappLink, telLink } from "@/lib/format";
 import PurchaseTracker from "@/components/PurchaseTracker";
 import RetryPayment from "@/components/RetryPayment";
+import OrderTotals from "@/components/OrderTotals";
 
 export const metadata = { title: "Order confirmation", robots: { index: false } };
 
@@ -35,6 +36,7 @@ export default async function OrderSuccessPage({ params, searchParams }) {
       transaction_id: order.order_number,
       value: Number(order.total),
       shipping: Number(order.shipping_fee),
+      tax: Number(order.vat_added) + Number(order.vat_included),
       currency: "NGN",
       email: order.email,
       phone: order.phone,
@@ -104,11 +106,7 @@ export default async function OrderSuccessPage({ params, searchParams }) {
             </li>
           ))}
         </ul>
-        <dl className="mt-4 space-y-1 text-sm">
-          <div className="flex justify-between"><dt>Subtotal</dt><dd>{formatNaira(order.subtotal)}</dd></div>
-          <div className="flex justify-between"><dt>Delivery ({DELIVERY_METHODS[order.delivery_method]})</dt><dd>{Number(order.shipping_fee) ? formatNaira(order.shipping_fee) : "Free"}</dd></div>
-          <div className="flex justify-between text-lg font-medium"><dt>Total</dt><dd>{formatNaira(order.total)}</dd></div>
-        </dl>
+        <OrderTotals o={order} deliveryLabel={`Delivery (${DELIVERY_METHODS[order.delivery_method]})`} className="mt-4" />
         {order.address_line && <p className="mt-4 text-sm text-muted">Delivering to: {order.address_line}, {order.city}, {order.state}</p>}
       </div>
       <Link href="/shop" className="btn-primary mt-10">Continue shopping</Link>

@@ -60,6 +60,12 @@ export default function ProductForm({ product, categories, kind = "product", def
         <Card title="Pricing (₦)">
           <Field label="Price" name="price" type="number" min="0" step="1" defaultValue={p.price != null ? Number(p.price) : ""} required />
           <Field label="Compare-at price" name="compare_at_price" type="number" min="0" step="1" defaultValue={p.compare_at_price ? Number(p.compare_at_price) : ""} hint="Optional old price, shown struck through." />
+          <Check
+            label="Price includes VAT"
+            name="vat_inclusive"
+            defaultChecked={p.vat_inclusive}
+            hint="Ticked: VAT is already inside the price. Unticked: VAT is added on top at checkout."
+          />
           <Field label="SKU / code" name="sku" defaultValue={p.sku || ""} />
         </Card>
 
