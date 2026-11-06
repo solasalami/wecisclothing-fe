@@ -20,10 +20,10 @@ export default async function GoLiveChecklist({ settings }) {
   const groups = [...new Set(manual.map((m) => m.group))];
 
   return (
-    <details className="group border border-line bg-white" open={done < total}>
-      <summary className="flex cursor-pointer list-none items-center justify-between gap-4 p-5">
+    <section className="border border-line bg-white">
+      <div className="flex flex-wrap items-center justify-between gap-4 p-5">
         <div>
-          <h2 className="font-sans text-sm font-bold uppercase tracking-wider">Go-live checklist</h2>
+          <h2 className="font-sans text-sm font-bold uppercase tracking-wider">Progress</h2>
           <p className="mt-1 text-xs text-muted">{done} of {total} complete{done === total ? ". Ready to launch!" : ""}</p>
         </div>
         <div className="flex items-center gap-3">
@@ -32,12 +32,12 @@ export default async function GoLiveChecklist({ settings }) {
           </div>
           <span className="text-sm font-semibold">{pct}%</span>
         </div>
-      </summary>
+      </div>
 
       <div className="grid gap-8 border-t border-line p-5 lg:grid-cols-2">
         <div>
           <h3 className="mb-1 font-sans text-xs font-bold uppercase tracking-wider text-gold-dark">Checked automatically ({autoDone}/{autoItems.length})</h3>
-          <p className="mb-4 text-xs text-muted">Re-checked every time you open the dashboard.</p>
+          <p className="mb-4 text-xs text-muted">Re-checked every time you open this page.</p>
           {auto.map((g) => (
             <div key={g.group} className="mb-5">
               <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.15em] text-muted">{g.group}</p>
@@ -91,6 +91,6 @@ export default async function GoLiveChecklist({ settings }) {
           ))}
         </div>
       </div>
-    </details>
+    </section>
   );
 }

@@ -2,19 +2,16 @@ import Link from "next/link";
 import { query } from "@/lib/db";
 import { formatNaira } from "@/lib/format";
 import OrdersTable from "@/components/admin/OrdersTable";
-import GoLiveChecklist from "@/components/admin/GoLiveChecklist";
-import { getSettings } from "@/lib/settings";
 
 export const metadata = { title: "Dashboard" };
 
 export default async function Dashboard() {
-  const [[today], [month], [pending], recent, [drafts], settings] = await Promise.all([
+  const [[today], [month], [pending], recent, [drafts]] = await Promise.all([
     query("SELECT COUNT(*) n, COALESCE(SUM(total),0) v FROM orders WHERE payment_status='paid' AND paid_at >= DATE(UTC_TIMESTAMP() + INTERVAL 1 HOUR) - INTERVAL 1 HOUR"),
     query("SELECT COUNT(*) n, COALESCE(SUM(total),0) v FROM orders WHERE payment_status='paid' AND paid_at >= CAST(DATE_FORMAT(UTC_TIMESTAMP() + INTERVAL 1 HOUR, '%Y-%m-01') AS DATETIME) - INTERVAL 1 HOUR"),
     query("SELECT COUNT(*) n FROM orders WHERE status IN ('pending','processing','ready') AND (payment_status='paid' OR payment_method='bank_transfer')"),
     query("SELECT id, order_number, first_name, last_name, total, status, payment_status, payment_method, created_at FROM orders ORDER BY id DESC LIMIT 10"),
     query("SELECT COUNT(*) n FROM products WHERE is_active = 0"),
-    getSettings(),
   ]);
   return (
     <div className="space-y-8">
@@ -26,7 +23,6 @@ export default async function Dashboard() {
         <Stat label="Hidden products" value={drafts.n} href="/admin/products?status=hidden" />
       </div>
 
-      <GoLiveChecklist settings={settings} />
 
       <section className="border border-line bg-white p-5">
         <div className="mb-3 flex items-center justify-between">

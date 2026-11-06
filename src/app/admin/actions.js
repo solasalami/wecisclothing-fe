@@ -220,7 +220,7 @@ export async function toggleGoLiveStep(fd) {
   const id = str(fd, "id");
   if (!manualSteps().some((s) => s.id === id)) return;
   await setManualStep(id, fd.get("done") === "1", me.name);
-  revalidatePath("/admin");
+  revalidatePath("/admin/go-live");
 }
 
 // ---------------- seasonal campaign ----------------

@@ -15,6 +15,7 @@ const LINKS = [
   ["/admin/banners", "Home banners"],
   ["/admin/showrooms", "Showrooms"],
   ["/admin/pages", "Info pages"],
+  ["/admin/go-live", "Go-live checklist"],
   ["/admin/settings", "Settings", false, "owner"],
   ["/admin/users", "Admin users", false, "owner"],
   ["/admin/account", "My password"],

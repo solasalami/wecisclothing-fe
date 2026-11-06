@@ -1,8 +1,8 @@
 # Go-live checklist
 
-The live version of this checklist is in **Admin, Dashboard, Go-live checklist**. It re-checks the automatic items every time you open it and lets the team tick off the manual steps.
+The live version of this checklist is in **Admin, Go-live checklist** (/admin/go-live). It re-checks the automatic items every time you open it and lets the team tick off the manual steps.
 
-## Checked automatically (on the dashboard)
+## Checked automatically
 
 | Area | Check |
 |---|---|
@@ -21,7 +21,7 @@ The live version of this checklist is in **Admin, Dashboard, Go-live checklist**
 | Content & marketing | Products live, every live product has a photo, showroom hours filled in |
 | Content & marketing | Google Tag Manager ID set, seasonal campaign live |
 
-## Manual steps (tick off on the dashboard)
+## Manual steps (tick off in Admin, Go-live checklist)
 
 **Payments**
 - [ ] Set the OPay webhook URL in the OPay merchant dashboard: `https://<your-site>/api/payments/opay/callback`. The site also sends it with every payment; this is a backup.

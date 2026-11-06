@@ -57,7 +57,7 @@ With `PAYMENT_MOCK=true` (dev only) checkout sends you to a **simulated OPay pag
 
 ## Go-live checklist
 
-Open **Admin, Dashboard, Go-live checklist**. It runs automatic checks (OPay keys and mode, OPay webhook received, email delivery, security, content, tracking) and lets the team tick off manual steps. The full list is in [docs/GO-LIVE.md](docs/GO-LIVE.md).
+Open **Admin, Go-live checklist** (`/admin/go-live`). It runs automatic checks (OPay keys and mode, OPay webhook received, email delivery, security, content, tracking) and lets the team tick off manual steps. The full list is in [docs/GO-LIVE.md](docs/GO-LIVE.md).
 
 ## After import: things to review in Admin
 
