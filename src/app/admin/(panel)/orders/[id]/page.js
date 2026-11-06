@@ -4,7 +4,9 @@ import { getOrderById, ORDER_STATUSES, DELIVERY_METHODS } from "@/lib/orders";
 import { formatNaira, formatDate, whatsappLink, telLink } from "@/lib/format";
 import { ActionForm, SubmitButton, ConfirmButton } from "@/components/admin/Form";
 import { Card, Badge, paymentTone, statusTone, Field } from "@/components/admin/Fields";
-import { updateOrder, markPaidManually } from "@/app/admin/actions";
+import { updateOrder, markPaidManually, resendOrderEmail } from "@/app/admin/actions";
+import { emailEnabled, emailMissingVars } from "@/lib/email";
+import { Check } from "@/components/admin/Fields";
 import { parseJson } from "@/lib/db";
 
 export const metadata = { title: "Order" };
@@ -85,6 +87,24 @@ export default async function OrderAdmin({ params, searchParams }) {
               </select>
               <SubmitButton className="btn-primary w-full">Update status</SubmitButton>
             </ActionForm>
+          </Card>
+          <Card title="Emails">
+            {o.payment_status === "paid" ? (
+              <p className="text-sm text-muted">The order confirmation is sent automatically when an order is paid.</p>
+            ) : (
+              <p className="text-sm text-muted">The confirmation is sent automatically once this order is paid.</p>
+            )}
+            <a href={`/admin/orders/${o.id}/email`} target="_blank" className="block text-sm underline">Preview confirmation email</a>
+            {o.payment_status === "paid" &&
+              (emailEnabled() ? (
+                <ActionForm action={resendOrderEmail} className="space-y-2">
+                  <input type="hidden" name="id" value={o.id} />
+                  <Check label="Also notify the store (ADMIN_EMAIL)" name="include_admin" />
+                  <SubmitButton className="btn-outline w-full !py-2.5">Resend confirmation email</SubmitButton>
+                </ActionForm>
+              ) : (
+                <p className="text-xs text-red-700">Email is off. Missing: {emailMissingVars().join(", ")}.</p>
+              ))}
           </Card>
           <Card title="Customer">
             <p className="text-sm font-medium">{o.first_name} {o.last_name}</p>

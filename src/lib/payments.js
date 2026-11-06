@@ -2,6 +2,7 @@ import "server-only";
 import crypto from "node:crypto";
 import { query, queryOne } from "./db";
 import { markOrderPaid } from "./orders";
+import { queueOrderPaidEmails } from "./order-emails";
 import { createCashierPayment, queryPaymentStatus, opayConfigured } from "./opay";
 
 export function siteUrl() {
@@ -82,7 +83,9 @@ export async function confirmPayment(reference, { mockStatus } = {}) {
   await query("UPDATE payments SET status = ?, raw = COALESCE(?, raw) WHERE id = ?", [status, raw ? JSON.stringify(raw) : null, payment.id]);
 
   if (status === "SUCCESS") {
-    await markOrderPaid(order.id, reference);
+    // markOrderPaid returns true only for the call that flips the order to paid,
+    // so confirmation emails go out exactly once even if OPay notifies us repeatedly.
+    if (await markOrderPaid(order.id, reference)) await queueOrderPaidEmails(order.id);
   } else if (status === "FAIL" || status === "CLOSE") {
     await query("UPDATE orders SET payment_status = 'failed' WHERE id = ? AND payment_status <> 'paid'", [order.id]);
   }

@@ -10,6 +10,7 @@ import { sanitizeHtml } from "@/lib/sanitize";
 import { slugify } from "@/lib/format";
 import { getSetting, saveSetting } from "@/lib/settings";
 import { markOrderPaid, ORDER_STATUSES } from "@/lib/orders";
+import { queueOrderPaidEmails, sendOrderPaidEmails } from "@/lib/order-emails";
 import { RESERVED_SLUGS } from "@/lib/campaign";
 
 // Clear cached storefront data after any content change (see lib/cache.js).
@@ -199,9 +200,18 @@ export async function updateOrder(_prev, fd) {
 export async function markPaidManually(fd) {
   await requireAdmin();
   const id = Number(fd.get("id"));
-  await markOrderPaid(id, str(fd, "reference") || null);
+  if (await markOrderPaid(id, str(fd, "reference") || null)) await queueOrderPaidEmails(id);
   invalidateStore();
   redirect(`/admin/orders/${id}?saved=1`);
+}
+
+export async function resendOrderEmail(_prev, fd) {
+  await requireAdmin();
+  const id = Number(fd.get("id"));
+  const res = await sendOrderPaidEmails(id, { customer: true, admin: fd.get("include_admin") === "on" });
+  if (res.ok) return { ok: "Confirmation email sent." };
+  const detail = res.results ? Object.entries(res.results).filter(([, r]) => !r.ok).map(([who, r]) => `${who}: ${r.error}`).join("; ") : res.error;
+  return { error: `Email not sent. ${detail}` };
 }
 
 // ---------------- seasonal campaign ----------------
