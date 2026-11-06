@@ -70,7 +70,7 @@ With `PAYMENT_MOCK=true` (dev only) checkout sends you to a **simulated OPay pag
 2. **Import:** in phpMyAdmin, select the **empty** live database and use **Import**, choosing the `.sql` file.
 3. **Admin login:** run `npm run admin:sql -- "Your Name" you@wecisclothing.com 'strong-password'` and paste the printed SQL into phpMyAdmin → SQL.
 4. **Images:** run `NETLIFY_SITE_ID=… NETLIFY_AUTH_TOKEN=… npm run media:upload`. This copies `./.uploads` to Netlify Blobs under the same `/media/...` paths.
-5. **Netlify environment variables:** set `DATABASE_URL=mysql://USER:PASSWORD@HOST:3306/DBNAME` (URL-encode special characters in the password), `DATABASE_SSL`, `AUTH_SECRET`, `NEXT_PUBLIC_SITE_URL` and `STORAGE_DRIVER=blobs`, then redeploy.
+5. **Netlify environment variables:** set the database as **`DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`**. This is recommended, because passwords with `?`, `#` or `@` need no escaping. Alternatively, set `DATABASE_URL=mysql://USER:PASSWORD@HOST:3306/DBNAME`. Then add `DATABASE_SSL`, `AUTH_SECRET`, `NEXT_PUBLIC_SITE_URL` and `STORAGE_DRIVER=blobs`, and redeploy. The `DB_*` variables take priority over `DATABASE_URL`.
 6. **Remote access:** the host must allow **remote MySQL connections**. Netlify Functions have no fixed IP, so on cPanel add `%` under *Remote MySQL*. Check `/api/health` afterwards.
 
 ## Database outages & health check

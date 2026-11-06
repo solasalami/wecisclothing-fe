@@ -9,6 +9,7 @@ import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
 import mysql from "mysql2/promise";
+import { getDbConfig } from "../src/lib/db-config.mjs";
 
 const [sqlPath = "./localhost.sql", imageRoot = "./wecisclothing/image"] = process.argv.slice(2).filter((a) => !a.startsWith("--"));
 const sql = fs.readFileSync(sqlPath, "utf8");
@@ -107,8 +108,7 @@ async function uploadImage(rel) {
 
 // ---------- run ----------
 const db = await mysql.createConnection({
-  uri: process.env.DATABASE_URL,
-  ssl: process.env.DATABASE_SSL === "true" ? { rejectUnauthorized: true } : undefined,
+  ...getDbConfig(),
 });
 const q = async (s, p = []) => (await db.query(s, p))[0];
 

@@ -2,18 +2,17 @@ import "server-only";
 import mysql from "mysql2/promise";
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
+import { getDbConfig } from "./db-config.mjs";
 
 function createPool() {
-  if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL is not set");
   return mysql.createPool({
-    uri: process.env.DATABASE_URL,
+    ...getDbConfig(), // host/user/password/database/ssl from DB_* vars or DATABASE_URL
     connectionLimit: 5,
     waitForConnections: true,
     connectTimeout: 5000, // fail fast (default is 10s) so visitors aren't left hanging
     decimalNumbers: true,
     dateStrings: false,
     timezone: "Z",
-    ssl: process.env.DATABASE_SSL === "true" ? { rejectUnauthorized: true } : undefined,
   });
 }
 
@@ -56,7 +55,7 @@ const CONNECTION_ERROR_CODES = new Set([
   "ECONNREFUSED", "ENETUNREACH", "EHOSTUNREACH", "ETIMEDOUT", "ECONNRESET", "ENOTFOUND", "EAI_AGAIN", "EPIPE",
   "PROTOCOL_CONNECTION_LOST", "PROTOCOL_SEQUENCE_TIMEOUT", "POOL_CLOSED", "POOL_ENQUEUELIMIT",
   "ER_ACCESS_DENIED_ERROR", "ER_BAD_DB_ERROR", "ER_CON_COUNT_ERROR", "ER_TOO_MANY_USER_CONNECTIONS",
-  "ER_SERVER_SHUTDOWN", "ER_HOST_NOT_PRIVILEGED", "ER_HOST_IS_BLOCKED", "CIRCUIT_OPEN",
+  "ER_SERVER_SHUTDOWN", "ER_HOST_NOT_PRIVILEGED", "ER_HOST_IS_BLOCKED", "CIRCUIT_OPEN", "DB_CONFIG",
 ]);
 
 /** True when the error means "can't reach / use the database" rather than a bad query. */
@@ -74,7 +73,8 @@ function logOutage(err) {
   // One log line per 30s instead of one per query.
   if (err.code === "CIRCUIT_OPEN" || Date.now() - lastLogged < 30_000) return;
   lastLogged = Date.now();
-  console.error(`[db] Database unavailable (${err.code || err.message}). Serving maintenance page.`);
+  const detail = err.code === "DB_CONFIG" ? `configuration error: ${err.message}` : err.code || err.message;
+  console.error(`[db] Database unavailable (${detail}). Serving maintenance page.`);
 }
 
 /** Path of the page being rendered (set by src/proxy.js), so we can send visitors back after recovery. */

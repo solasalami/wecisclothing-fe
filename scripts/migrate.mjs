@@ -2,11 +2,11 @@
 import "./env.mjs";
 import fs from "node:fs";
 import mysql from "mysql2/promise";
+import { getDbConfig } from "../src/lib/db-config.mjs";
 
 const conn = await mysql.createConnection({
-  uri: process.env.DATABASE_URL,
+  ...getDbConfig(),
   multipleStatements: true,
-  ssl: process.env.DATABASE_SSL === "true" ? { rejectUnauthorized: true } : undefined,
 });
 await conn.query(fs.readFileSync(new URL("../db/schema.sql", import.meta.url), "utf8"));
 
