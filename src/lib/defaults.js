@@ -47,6 +47,12 @@ export const DEFAULT_SETTINGS = {
     empty_message: "Our Detty December packages are dropping soon.",
     whatsapp_message: "Hello Wecis Clothing, I'd like to order a Detty December package.",
     show_on_home: true,
+    home_image: "", // optional banner image; blank = text placeholder design
+    home_image_mobile: "", // optional portrait image for phones
+    home_image_alt: "",
+    home_title: "", // blank = use the landing page title
+    home_subtitle: "", // blank = use the landing page sub-heading
+    home_show_packages: true, // show published packages under the section
     home_eyebrow: "Limited season collection",
     home_cta: "Explore festive packages",
     announcement: "Detty December packages are live — order early for delivery before Christmas!",

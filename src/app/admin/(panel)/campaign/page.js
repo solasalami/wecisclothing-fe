@@ -8,6 +8,7 @@ import { ActionForm, SubmitButton } from "@/components/admin/Form";
 import { Field, TextArea, Check, Card, PageHeader, Badge } from "@/components/admin/Fields";
 import RichText from "@/components/admin/RichText";
 import { saveCampaign, toggleProduct } from "@/app/admin/actions";
+import CampaignPromo from "@/components/CampaignPromo";
 
 export const metadata = { title: "Seasonal campaign" };
 
@@ -123,13 +124,64 @@ export default async function CampaignAdmin({ searchParams }) {
           <Field label="Pre-filled WhatsApp message" name="whatsapp_message" defaultValue={c.whatsapp_message} />
         </Card>
 
-        <Card title="Homepage & announcement bar">
-          <Check label="Show a campaign section on the homepage" name="show_on_home" defaultChecked={c.show_on_home} />
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Homepage small heading" name="home_eyebrow" defaultValue={c.home_eyebrow} />
-            <Field label="Homepage button text" name="home_cta" defaultValue={c.home_cta} />
+        <Card title="Homepage section">
+          <Check
+            label="Publish this section on the homepage"
+            name="show_on_home"
+            defaultChecked={c.show_on_home}
+            hint="Shown only while the campaign is live. Links to the campaign page."
+          />
+
+          <div>
+            <span className="label">Current preview</span>
+            <div className="border border-dashed border-line bg-white p-3">
+              <div className="pointer-events-none origin-top-left">
+                <CampaignPromo campaign={c} />
+              </div>
+            </div>
+            <p className="mt-1 text-xs text-muted">
+              {c.home_image ? "Showing your uploaded image." : "No image uploaded, so the text design below is used as a placeholder."}
+            </p>
           </div>
-          <Check label="Show announcement bar at the top of every page" name="show_announcement" defaultChecked={c.show_announcement} />
+
+          <div className="grid gap-6 md:grid-cols-2">
+            <div>
+              <span className="label">Banner image (desktop)</span>
+              {c.home_image && (
+                <div className="mb-2 flex items-center gap-3">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={c.home_image} alt="" className="h-16 w-40 border border-line object-cover" />
+                  <Check label="Remove" name="remove_home_image" />
+                </div>
+              )}
+              <ImageUpload name="home_image" buttonLabel={c.home_image ? "Replace image" : "Choose image"} hint="Wide, e.g. 1800×600 · put any text inside the image" compact />
+            </div>
+            <div>
+              <span className="label">Mobile image (optional)</span>
+              {c.home_image_mobile && (
+                <div className="mb-2 flex items-center gap-3">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={c.home_image_mobile} alt="" className="h-16 w-12 border border-line object-cover" />
+                  <Check label="Remove" name="remove_home_image_mobile" />
+                </div>
+              )}
+              <ImageUpload name="home_image_mobile" buttonLabel={c.home_image_mobile ? "Replace image" : "Choose image"} hint="Portrait, e.g. 900×1100 · falls back to the desktop image" compact />
+            </div>
+          </div>
+          <Field label="Image description (for screen readers & SEO)" name="home_image_alt" defaultValue={c.home_image_alt} placeholder="e.g. Detty December 2026 — festive outfits and packages" />
+
+          <p className="pt-2 text-xs uppercase tracking-[0.15em] text-muted">Text (used when there&apos;s no image)</p>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Small heading" name="home_eyebrow" defaultValue={c.home_eyebrow} />
+            <Field label="Button text" name="home_cta" defaultValue={c.home_cta} />
+          </div>
+          <Field label="Title" name="home_title" defaultValue={c.home_title} placeholder={c.title} hint="Blank = same as the landing page title." />
+          <TextArea label="Sub-heading" name="home_subtitle" rows={2} defaultValue={c.home_subtitle} placeholder={c.subtitle} hint="Blank = same as the landing page sub-heading." />
+          <Check label="Show published packages under this section" name="home_show_packages" defaultChecked={c.home_show_packages} />
+        </Card>
+
+        <Card title="Announcement bar">
+          <Check label="Show the scrolling announcement at the top of every page" name="show_announcement" defaultChecked={c.show_announcement} />
           <Field label="Announcement text" name="announcement" defaultValue={c.announcement} />
         </Card>
 

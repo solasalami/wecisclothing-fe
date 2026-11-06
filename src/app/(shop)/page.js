@@ -8,6 +8,7 @@ import ProductCarousel, { CarouselItem } from "@/components/ProductCarousel";
 import HeroSlider from "@/components/HeroSlider";
 import ShowroomCards from "@/components/ShowroomCards";
 import { isCampaignLive } from "@/lib/campaign";
+import CampaignPromo from "@/components/CampaignPromo";
 
 export default async function HomePage() {
   const [banners, featured, newest, packages, categories, showrooms, settings] = await Promise.all([
@@ -41,16 +42,8 @@ export default async function HomePage() {
 
       {isCampaignLive(campaign) && campaign.show_on_home && (
         <section className="mx-auto mt-16 max-w-7xl px-4">
-          <div className="relative border border-gold/50 bg-gold-light px-6 py-14 text-center">
-            <div className="pointer-events-none absolute inset-2 border border-gold/30" aria-hidden="true" />
-            {campaign.home_eyebrow && <p className="text-xs uppercase tracking-[0.3em] text-gold-dark">{campaign.home_eyebrow}</p>}
-            <h2 className="mt-3 text-4xl text-ink md:text-5xl">{campaign.title}</h2>
-            <p className="mx-auto mt-4 max-w-2xl text-ink/70">{campaign.subtitle}</p>
-            <Link href={`/${campaign.slug}`} className="btn-primary relative mt-8">
-              {campaign.home_cta || `Shop ${campaign.name}`}
-            </Link>
-          </div>
-          {packages.items.length > 0 && (
+          <CampaignPromo campaign={campaign} />
+          {campaign.home_show_packages && packages.items.length > 0 && (
             <div className="mt-10">
               <ProductGrid products={packages.items} />
             </div>

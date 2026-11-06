@@ -220,6 +220,18 @@ export async function saveCampaign(_prev, fd) {
   }
   if (fd.get("remove_hero") === "on") hero = "";
 
+  // Homepage section images (optional): desktop + mobile
+  let homeImage = current.home_image || "";
+  let homeImageMobile = current.home_image_mobile || "";
+  try {
+    homeImage = (await saveUpload(fd.get("home_image"), "campaign")) || homeImage;
+    homeImageMobile = (await saveUpload(fd.get("home_image_mobile"), "campaign")) || homeImageMobile;
+  } catch (e) {
+    return { error: e.message };
+  }
+  if (fd.get("remove_home_image") === "on") homeImage = "";
+  if (fd.get("remove_home_image_mobile") === "on") homeImageMobile = "";
+
   // Remember old URLs so links/ads to the previous slug keep working.
   const previous = new Set(current.previous_slugs || []);
   if (current.slug && current.slug !== slug) previous.add(current.slug);
@@ -248,6 +260,12 @@ export async function saveCampaign(_prev, fd) {
     empty_message: str(fd, "empty_message"),
     whatsapp_message: str(fd, "whatsapp_message"),
     show_on_home: !!bool(fd, "show_on_home"),
+    home_image: homeImage,
+    home_image_mobile: homeImageMobile,
+    home_image_alt: str(fd, "home_image_alt"),
+    home_title: str(fd, "home_title"),
+    home_subtitle: str(fd, "home_subtitle"),
+    home_show_packages: !!bool(fd, "home_show_packages"),
     home_eyebrow: str(fd, "home_eyebrow"),
     home_cta: str(fd, "home_cta"),
     show_announcement: !!bool(fd, "show_announcement"),
