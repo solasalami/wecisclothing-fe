@@ -1,6 +1,7 @@
 "use server";
 import { redirect } from "next/navigation";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
+import { STORE_TAG } from "@/lib/cache";
 import { z } from "zod";
 import { query, queryOne, transaction } from "@/lib/db";
 import { requireAdmin, requireOwner, checkPassword, hashPassword, startAdminSession, endAdminSession } from "@/lib/auth";
@@ -10,6 +11,9 @@ import { slugify } from "@/lib/format";
 import { getSetting, saveSetting } from "@/lib/settings";
 import { markOrderPaid, ORDER_STATUSES } from "@/lib/orders";
 import { RESERVED_SLUGS } from "@/lib/campaign";
+
+// Clear cached storefront data after any content change (see lib/cache.js).
+const invalidateStore = () => updateTag(STORE_TAG);
 
 const str = (fd, k) => String(fd.get(k) ?? "").trim();
 const num = (fd, k) => {
@@ -116,6 +120,7 @@ export async function saveProduct(_prev, fd) {
     const stillUsed = await queryOne("SELECT id FROM product_images WHERE url = ? LIMIT 1", [url]);
     if (!stillUsed) await deleteFile(url).catch(() => {});
   }
+  invalidateStore();
   redirect(`/admin/products/${productId}?saved=1`);
 }
 
@@ -129,6 +134,7 @@ export async function deleteProduct(fd) {
   } else {
     await query("DELETE FROM products WHERE id = ?", [id]);
   }
+  invalidateStore();
   redirect(fd.get("return_to") === "packages" ? "/admin/campaign" : "/admin/products");
 }
 
@@ -136,6 +142,7 @@ export async function toggleProduct(fd) {
   await requireAdmin();
   await query("UPDATE products SET is_active = 1 - is_active WHERE id = ?", [Number(fd.get("id"))]);
   revalidatePath("/admin", "layout");
+  invalidateStore();
 }
 
 // ---------------- categories ----------------
@@ -167,12 +174,14 @@ export async function saveCategory(_prev, fd) {
   } else {
     await query("INSERT INTO categories (parent_id, name, slug, description, sort_order, is_active, show_in_menu, image) VALUES (?,?,?,?,?,?,?,?)", [...vals, image]);
   }
+  invalidateStore();
   redirect("/admin/categories?saved=1");
 }
 
 export async function deleteCategory(fd) {
   await requireAdmin();
   await query("DELETE FROM categories WHERE id = ?", [Number(fd.get("id"))]);
+  invalidateStore();
   redirect("/admin/categories");
 }
 
@@ -191,6 +200,7 @@ export async function markPaidManually(fd) {
   await requireAdmin();
   const id = Number(fd.get("id"));
   await markOrderPaid(id, str(fd, "reference") || null);
+  invalidateStore();
   redirect(`/admin/orders/${id}?saved=1`);
 }
 
@@ -271,6 +281,7 @@ export async function saveCampaign(_prev, fd) {
     show_announcement: !!bool(fd, "show_announcement"),
     announcement: str(fd, "announcement"),
   });
+  invalidateStore();
   redirect("/admin/campaign?saved=1");
 }
 
@@ -292,12 +303,14 @@ export async function saveBanner(_prev, fd) {
   } else {
     await query("INSERT INTO banners (title, subtitle, link, button_label, sort_order, is_active, image, placement) VALUES (?,?,?,?,?,?,?, 'home_hero')", [...vals, image]);
   }
+  invalidateStore();
   redirect("/admin/banners?saved=1");
 }
 
 export async function deleteBanner(fd) {
   await requireAdmin();
   await query("DELETE FROM banners WHERE id = ?", [Number(fd.get("id"))]);
+  invalidateStore();
   redirect("/admin/banners");
 }
 
@@ -311,12 +324,14 @@ export async function savePage(_prev, fd) {
   const vals = [title, slug, sanitizeHtml(fd.get("body")), str(fd, "meta_description") || null, bool(fd, "is_active"), num(fd, "sort_order") || 0];
   if (id) await query("UPDATE pages SET title=?, slug=?, body=?, meta_description=?, is_active=?, sort_order=? WHERE id=?", [...vals, id]);
   else await query("INSERT INTO pages (title, slug, body, meta_description, is_active, sort_order) VALUES (?,?,?,?,?,?)", vals);
+  invalidateStore();
   redirect("/admin/pages?saved=1");
 }
 
 export async function deletePage(fd) {
   await requireAdmin();
   await query("DELETE FROM pages WHERE id = ?", [Number(fd.get("id"))]);
+  invalidateStore();
   redirect("/admin/pages");
 }
 
@@ -328,12 +343,14 @@ export async function saveShowroom(_prev, fd) {
   if (!vals[0] || !vals[1]) return { error: "Name and address are required" };
   if (id) await query("UPDATE showrooms SET name=?, address=?, phone=?, whatsapp=?, hours=?, map_url=?, sort_order=?, is_active=? WHERE id=?", [...vals, id]);
   else await query("INSERT INTO showrooms (name, address, phone, whatsapp, hours, map_url, sort_order, is_active) VALUES (?,?,?,?,?,?,?,?)", vals);
+  invalidateStore();
   redirect("/admin/showrooms?saved=1");
 }
 
 export async function deleteShowroom(fd) {
   await requireAdmin();
   await query("DELETE FROM showrooms WHERE id = ?", [Number(fd.get("id"))]);
+  invalidateStore();
   redirect("/admin/showrooms");
 }
 
@@ -372,6 +389,7 @@ export async function saveSettings(_prev, fd) {
   const gtm = str(fd, "gtm_id").toUpperCase();
   if (gtm && !/^GTM-[A-Z0-9]{4,12}$/.test(gtm)) return { error: "GTM container ID should look like GTM-XXXXXXX" };
   await saveSetting("tracking", { ...tracking, gtm_id: gtm });
+  invalidateStore();
   return { ok: "Settings saved" };
 }
 

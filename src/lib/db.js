@@ -4,11 +4,22 @@ import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { getDbConfig } from "./db-config.mjs";
 
+// On serverless (Netlify Functions = AWS Lambda) each warm instance keeps its own pool,
+// and frozen instances keep idle sockets open on the MySQL server. Shared hosts cap
+// connections per user (often 10–25), so there we use a tiny pool and close
+// connections as soon as they're released (maxIdle 0) — nothing lingers between requests.
+const SERVERLESS = Boolean(process.env.AWS_LAMBDA_FUNCTION_NAME || process.env.NETLIFY || process.env.VERCEL);
+const CONNECTION_LIMIT = Number(process.env.DB_CONNECTION_LIMIT) || (SERVERLESS ? 2 : 5);
+const MAX_IDLE = process.env.DB_MAX_IDLE !== undefined ? Number(process.env.DB_MAX_IDLE) : SERVERLESS ? 0 : CONNECTION_LIMIT;
+
 function createPool() {
   return mysql.createPool({
     ...getDbConfig(), // host/user/password/database/ssl from DB_* vars or DATABASE_URL
-    connectionLimit: 5,
+    connectionLimit: CONNECTION_LIMIT,
+    maxIdle: MAX_IDLE,
+    idleTimeout: 10_000,
     waitForConnections: true,
+    queueLimit: 100,
     connectTimeout: 5000, // fail fast (default is 10s) so visitors aren't left hanging
     decimalNumbers: true,
     dateStrings: false,
@@ -96,10 +107,26 @@ async function handle(err) {
   redirect(`/maintenance?from=${encodeURIComponent(await currentPath())}`);
 }
 
+// "Too many connections" is usually momentary contention, not an outage: retry briefly first.
+const BUSY_CODES = new Set(["ER_TOO_MANY_USER_CONNECTIONS", "ER_CON_COUNT_ERROR"]);
+const BUSY_RETRY_DELAYS_MS = [150, 400, 900];
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+async function withBusyRetry(fn) {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      if (!BUSY_CODES.has(err?.code) || attempt >= BUSY_RETRY_DELAYS_MS.length) throw err;
+      await sleep(BUSY_RETRY_DELAYS_MS[attempt]);
+    }
+  }
+}
+
 export async function query(sql, params = []) {
   try {
     assertCircuitClosed();
-    const [rows] = await withTimeout(getPool().query(sql, params));
+    const [rows] = await withBusyRetry(() => withTimeout(getPool().query(sql, params)));
     return rows;
   } catch (err) {
     return handle(err);
@@ -115,7 +142,7 @@ export async function transaction(fn) {
   let conn;
   try {
     assertCircuitClosed();
-    conn = await withTimeout(getPool().getConnection());
+    conn = await withBusyRetry(() => withTimeout(getPool().getConnection()));
   } catch (err) {
     return handle(err);
   }

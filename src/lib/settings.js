@@ -2,11 +2,12 @@ import "server-only";
 import { unstable_rethrow } from "next/navigation";
 import { query, queryOne, parseJson } from "./db";
 import { DEFAULT_SETTINGS } from "./defaults";
+import { cached } from "./cache";
 
 export { DEFAULT_SETTINGS };
 
 
-export async function getSettings() {
+async function getSettingsUncached() {
   let rows = [];
   try {
     rows = await query("SELECT `key`, value FROM settings");
@@ -23,7 +24,7 @@ export async function getSettings() {
   return out;
 }
 
-export async function getSetting(key) {
+async function getSettingUncached(key) {
   const row = await queryOne("SELECT value FROM settings WHERE `key` = ?", [key]);
   return { ...(DEFAULT_SETTINGS[key] || {}), ...parseJson(row?.value, {}) };
 }
@@ -34,3 +35,6 @@ export async function saveSetting(key, value) {
     [key, JSON.stringify(value)]
   );
 }
+
+export const getSettings = cached(getSettingsUncached, "getSettings");
+export const getSetting = cached(getSettingUncached, "getSetting");

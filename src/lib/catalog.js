@@ -2,6 +2,7 @@ import "server-only";
 import { query, queryOne, parseJson } from "./db";
 import { getSetting } from "./settings";
 import { isCampaignLive } from "./campaign";
+import { cached } from "./cache";
 
 /** Seasonal packages are hidden from listings (and can't be bought) outside their campaign, if configured. */
 export async function packagesAvailable() {
@@ -47,7 +48,7 @@ async function descendantIds(rootId) {
 }
 
 /** Active category tree. Each node has `count` = active products in it or any descendant. */
-export async function getCategoryTree() {
+async function getCategoryTreeUncached() {
   const rows = await query(
     `SELECT c.id, c.parent_id, c.name, c.slug, c.image, c.description, c.show_in_menu,
        (SELECT COUNT(*) FROM product_categories pc JOIN products p ON p.id = pc.product_id AND p.is_active = 1 WHERE pc.category_id = c.id) AS own
@@ -64,7 +65,7 @@ export async function getCategoryTree() {
   return roots;
 }
 
-export async function getCategoryBySlug(slug) {
+async function getCategoryBySlugUncached(slug) {
   const cat = await queryOne("SELECT * FROM categories WHERE slug = ? AND is_active = 1", [slug]);
   if (!cat) return null;
   const children = await query(
@@ -99,7 +100,7 @@ const SORTS = {
  * List active products.
  * @param {{categoryId?:number, kind?:string, featured?:boolean, search?:string, sort?:string, limit?:number, offset?:number}} opts
  */
-export async function listProducts(opts = {}) {
+async function listProductsUncached(opts = {}) {
   const where = ["p.is_active = 1"];
   const params = [];
   if (opts.kind) {
@@ -130,7 +131,7 @@ export async function listProducts(opts = {}) {
   return { items: rows.map(hydrate), total };
 }
 
-export async function getProductBySlug(slug) {
+async function loadProductBySlug(slug) {
   const p = await queryOne("SELECT * FROM products WHERE slug = ? AND is_active = 1", [slug]);
   if (!p) return null;
   p.images = await query("SELECT id, url, alt FROM product_images WHERE product_id = ? ORDER BY sort_order, id", [p.id]);
@@ -138,12 +139,23 @@ export async function getProductBySlug(slug) {
     "SELECT c.id, c.name, c.slug FROM product_categories pc JOIN categories c ON c.id = pc.category_id WHERE pc.product_id = ? AND c.is_active = 1",
     [p.id]
   );
-  query("UPDATE products SET views = views + 1 WHERE id = ?", [p.id]).catch(() => {});
   return hydrate(p);
+}
+const loadProductBySlugCached = cached(loadProductBySlug, "productBySlug");
+
+export async function getProductBySlug(slug) {
+  const p = await loadProductBySlugCached(slug);
+  // view counter stays outside the cache (fire-and-forget)
+  if (p) query("UPDATE products SET views = views + 1 WHERE id = ?", [p.id]).catch(() => {});
+  return p;
 }
 
 export async function getRelatedProducts(product, limit = 4) {
-  const catIds = product.categories.map((c) => c.id);
+  return relatedCached(product.id, product.categories.map((c) => c.id), limit);
+}
+
+async function relatedUncached(productId, catIds, limit) {
+  const product = { id: productId };
   if (!catIds.length) return (await listProducts({ limit })).items.filter((p) => p.id !== product.id);
   const rows = await query(
     `SELECT ${PRODUCT_COLUMNS} FROM products p
@@ -162,18 +174,27 @@ export async function getProductsByIds(ids) {
   return rows.map(hydrate);
 }
 
-export async function getBanners(placement = "home_hero") {
+async function getBannersUncached(placement = "home_hero") {
   return query("SELECT * FROM banners WHERE placement = ? AND is_active = 1 ORDER BY sort_order, id", [placement]);
 }
 
-export async function getShowrooms() {
+async function getShowroomsUncached() {
   return query("SELECT * FROM showrooms WHERE is_active = 1 ORDER BY sort_order, id");
 }
 
-export async function getPage(slug) {
+async function getPageUncached(slug) {
   return queryOne("SELECT * FROM pages WHERE slug = ? AND is_active = 1", [slug]);
 }
 
-export async function getFooterPages() {
+async function getFooterPagesUncached() {
   return query("SELECT slug, title FROM pages WHERE is_active = 1 ORDER BY sort_order, title");
 }
+
+export const getCategoryTree = cached(getCategoryTreeUncached, "getCategoryTree");
+export const getCategoryBySlug = cached(getCategoryBySlugUncached, "getCategoryBySlug");
+export const listProducts = cached(listProductsUncached, "listProducts");
+export const getBanners = cached(getBannersUncached, "getBanners");
+export const getShowrooms = cached(getShowroomsUncached, "getShowrooms");
+export const getPage = cached(getPageUncached, "getPage");
+export const getFooterPages = cached(getFooterPagesUncached, "getFooterPages");
+const relatedCached = cached(relatedUncached, "related");
