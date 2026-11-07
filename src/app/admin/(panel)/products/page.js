@@ -1,6 +1,10 @@
 import Link from "next/link";
 import { query } from "@/lib/db";
-import { formatNaira } from "@/lib/format";
+import { formatNaira, formatDate } from "@/lib/format";
+import { tableParams } from "@/lib/admin-table";
+import { SortHeader, Pagination, KeepTableState } from "@/components/admin/TableControls";
+
+const BASE = "/admin/products";
 import { PageHeader, Badge } from "@/components/admin/Fields";
 import { toggleProduct } from "@/app/admin/actions";
 
@@ -14,12 +18,19 @@ export default async function ProductsAdmin({ searchParams }) {
   if (sp.kind === "package" || sp.kind === "product") { where.push("p.kind = ?"); params.push(sp.kind); }
   if (sp.status === "hidden") where.push("p.is_active = 0");
   if (sp.status === "live") where.push("p.is_active = 1");
+  const table = tableParams(sp, {
+    sorts: { price: "p.price", added: "p.created_at", stock: "IF(p.track_stock, p.stock_qty, NULL)" },
+    fallback: "p.is_active DESC, p.sort_order, p.id DESC",
+    tiebreak: "p.id DESC",
+  });
+  const sortProps = { basePath: BASE, sp, table };
+  const [{ total }] = await query(`SELECT COUNT(*) total FROM products p WHERE ${where.join(" AND ")}`, params);
   const products = await query(
-    `SELECT p.id, p.name, p.kind, p.sku, p.price, p.is_active, p.is_featured, p.track_stock, p.stock_qty,
+    `SELECT p.id, p.name, p.kind, p.sku, p.price, p.is_active, p.is_featured, p.track_stock, p.stock_qty, p.created_at,
       (SELECT url FROM product_images i WHERE i.product_id = p.id ORDER BY sort_order, id LIMIT 1) image,
       (SELECT GROUP_CONCAT(c.name SEPARATOR ', ') FROM product_categories pc JOIN categories c ON c.id = pc.category_id WHERE pc.product_id = p.id) cats
-     FROM products p WHERE ${where.join(" AND ")} ORDER BY p.is_active DESC, p.sort_order, p.id DESC LIMIT 500`,
-    params
+     FROM products p WHERE ${where.join(" AND ")} ORDER BY ${table.orderBy} LIMIT ? OFFSET ?`,
+    [...params, table.per, table.offset]
   );
   return (
     <div>
@@ -31,12 +42,19 @@ export default async function ProductsAdmin({ searchParams }) {
         <input name="q" defaultValue={sp.q || ""} placeholder="Search name or SKU" className="input max-w-xs" />
         <select name="kind" defaultValue={sp.kind || ""} className="input max-w-40"><option value="">All types</option><option value="product">Products</option><option value="package">Packages</option></select>
         <select name="status" defaultValue={sp.status || ""} className="input max-w-40"><option value="">Any status</option><option value="live">Visible</option><option value="hidden">Hidden</option></select>
+        <KeepTableState table={table} />
         <button className="btn-outline !py-2">Filter</button>
       </form>
       <div className="overflow-x-auto border border-line bg-white">
         <table className="w-full text-left text-sm">
           <thead className="border-b border-line bg-soft text-xs uppercase text-muted">
-            <tr><th className="p-3">Product</th><th>Categories</th><th>Price</th><th>Stock</th><th>Status</th><th></th></tr>
+            <tr>
+              <th className="p-3">Product</th><th>Categories</th>
+              <SortHeader label="Price" column="price" {...sortProps} />
+              <SortHeader label="Stock" column="stock" {...sortProps} />
+              <SortHeader label="Added" column="added" {...sortProps} />
+              <th>Status</th><th></th>
+            </tr>
           </thead>
           <tbody>
             {products.map((p) => (
@@ -54,6 +72,7 @@ export default async function ProductsAdmin({ searchParams }) {
                 <td className="max-w-48 text-xs text-muted">{p.cats}</td>
                 <td>{formatNaira(p.price)}</td>
                 <td>{p.track_stock ? p.stock_qty : <span className="text-muted">-</span>}</td>
+                <td className="whitespace-nowrap">{formatDate(p.created_at, { dateOnly: true })}</td>
                 <td className="space-x-1">
                   {p.is_active ? <Badge tone="green">Visible</Badge> : <Badge>Hidden</Badge>}
                   {p.kind === "package" && <Badge tone="gold">Package</Badge>}
@@ -70,6 +89,7 @@ export default async function ProductsAdmin({ searchParams }) {
           </tbody>
         </table>
         {!products.length && <p className="p-6 text-center text-muted">No products match.</p>}
+        <Pagination basePath={BASE} sp={sp} table={table} total={Number(total)} />
       </div>
     </div>
   );

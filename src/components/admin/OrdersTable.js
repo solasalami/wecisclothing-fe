@@ -1,14 +1,22 @@
 import Link from "next/link";
 import { formatNaira, formatDate } from "@/lib/format";
 import { Badge, paymentTone, statusTone } from "./Fields";
+import { SortHeader } from "./TableControls";
 
-export default function OrdersTable({ orders }) {
-  if (!orders.length) return <p className="text-sm text-muted">No orders yet.</p>;
+/**
+ * Orders list. Pass `sortable={{ basePath, sp, table }}` to make Date and Total
+ * sortable (the Orders page); the dashboard preview leaves it out.
+ */
+export default function OrdersTable({ orders, sortable, empty = "No orders yet." }) {
+  if (!orders.length) return <p className="p-4 text-sm text-muted">{empty}</p>;
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-left text-sm">
         <thead className="border-b border-line text-xs uppercase text-muted">
-          <tr><th className="py-2">Order</th><th>Customer</th><th>Date</th><th>Payment</th><th>Status</th><th className="text-right">Total</th></tr>
+          <tr>
+            <th className="py-2">Order</th><th>Customer</th><Sort label="Date" column="date" sortable={sortable} /><th>Payment</th><th>Status</th>
+            <Sort label="Total" column="total" align="right" sortable={sortable} />
+          </tr>
         </thead>
         <tbody>
           {orders.map((o) => (
@@ -25,4 +33,9 @@ export default function OrdersTable({ orders }) {
       </table>
     </div>
   );
+}
+
+function Sort({ label, column, align, sortable }) {
+  if (!sortable) return <th className={align === "right" ? "text-right" : ""}>{label}</th>;
+  return <SortHeader label={label} column={column} align={align} {...sortable} />;
 }

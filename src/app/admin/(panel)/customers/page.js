@@ -1,46 +1,68 @@
 import { query } from "@/lib/db";
 import { formatDate, formatNaira } from "@/lib/format";
 import { PageHeader } from "@/components/admin/Fields";
+import { tableParams } from "@/lib/admin-table";
+import { SortHeader, Pagination, KeepTableState } from "@/components/admin/TableControls";
 
 export const metadata = { title: "Customers" };
 
+const BASE = "/admin/customers";
 const day = (v) => formatDate(v, { dateOnly: true });
 
+// Everyone who has registered or ordered, one row per email. Orders count whether
+// they were placed as a guest or signed in.
+const CUSTOMERS_SQL = `
+  SELECT e.email,
+    COALESCE(CONCAT(c.first_name,' ',c.last_name), o.name) name,
+    COALESCE(c.phone, o.phone) phone,
+    c.created_at registered_at, c.email_verified_at,
+    o.first_order, o.last_order, COALESCE(o.orders, 0) orders, COALESCE(o.spent, 0) spent,
+    LEAST(COALESCE(c.created_at, o.first_order), COALESCE(o.first_order, c.created_at)) since,
+    GREATEST(COALESCE(o.last_order, c.created_at), COALESCE(c.created_at, o.last_order)) last_activity
+  FROM (SELECT email FROM orders UNION SELECT email FROM customers) e
+  LEFT JOIN customers c ON c.email = e.email
+  LEFT JOIN (
+    SELECT email, MAX(CONCAT(first_name,' ',last_name)) name, MAX(phone) phone, COUNT(*) orders,
+      SUM(CASE WHEN payment_status='paid' THEN total ELSE 0 END) spent,
+      MIN(created_at) first_order, MAX(created_at) last_order
+    FROM orders GROUP BY email
+  ) o ON o.email = e.email`;
+
 export default async function CustomersAdmin({ searchParams }) {
-  const { q } = await searchParams;
+  const sp = await searchParams;
+  const q = sp.q || "";
   const like = q ? `%${q}%` : null;
-  // Everyone who has registered or ordered, one row per email. Orders count whether
-  // they were placed as a guest or signed in.
-  const rows = await query(
-    `SELECT e.email,
-        COALESCE(CONCAT(c.first_name,' ',c.last_name), o.name) name,
-        COALESCE(c.phone, o.phone) phone,
-        c.created_at registered_at, c.email_verified_at,
-        o.first_order, o.last_order, COALESCE(o.orders, 0) orders, COALESCE(o.spent, 0) spent,
-        LEAST(COALESCE(c.created_at, o.first_order), COALESCE(o.first_order, c.created_at)) since
-     FROM (SELECT email FROM orders UNION SELECT email FROM customers) e
-     LEFT JOIN customers c ON c.email = e.email
-     LEFT JOIN (
-       SELECT email, MAX(CONCAT(first_name,' ',last_name)) name, MAX(phone) phone, COUNT(*) orders,
-         SUM(CASE WHEN payment_status='paid' THEN total ELSE 0 END) spent,
-         MIN(created_at) first_order, MAX(created_at) last_order
-       FROM orders GROUP BY email
-     ) o ON o.email = e.email
-     ${like ? "HAVING email LIKE ? OR phone LIKE ? OR name LIKE ?" : ""}
-     ORDER BY GREATEST(COALESCE(o.last_order, c.created_at), COALESCE(c.created_at, o.last_order)) DESC
-     LIMIT 500`,
-    like ? [like, like, like] : []
-  );
+  const table = tableParams(sp, {
+    sorts: { since: "since", registered: "registered_at", first_order: "first_order", last_order: "last_order", orders: "orders", spent: "spent" },
+    fallback: "last_activity DESC, email",
+    tiebreak: "email",
+  });
+  const sortProps = { basePath: BASE, sp, table };
+  const filter = like ? "WHERE t.email LIKE ? OR t.phone LIKE ? OR t.name LIKE ?" : "";
+  const params = like ? [like, like, like] : [];
+  const [rows, [{ total }]] = await Promise.all([
+    query(`SELECT * FROM (${CUSTOMERS_SQL}) t ${filter} ORDER BY ${table.orderBy} LIMIT ? OFFSET ?`, [...params, table.per, table.offset]),
+    query(`SELECT COUNT(*) total FROM (${CUSTOMERS_SQL}) t ${filter}`, params),
+  ]);
   return (
     <div>
       <PageHeader title="Customers" />
-      <form className="mb-4 flex gap-2"><input name="q" defaultValue={q || ""} placeholder="Name, email or phone" className="input max-w-xs" /><button className="btn-outline !py-2">Search</button></form>
+      <form className="mb-4 flex gap-2">
+        <input name="q" defaultValue={q} placeholder="Name, email or phone" className="input max-w-xs" />
+        <KeepTableState table={table} />
+        <button className="btn-outline !py-2">Search</button>
+      </form>
       <div className="overflow-x-auto border border-line bg-white">
         <table className="w-full text-left text-sm">
           <thead className="border-b border-line bg-soft text-xs uppercase text-muted">
             <tr>
-              <th className="p-3">Name</th><th>Email</th><th>Phone</th><th>Customer since</th><th>Registered</th><th>First order</th>
-              <th>Orders</th><th>Paid total</th><th>Last order</th>
+              <th className="p-3">Name</th><th>Email</th><th>Phone</th>
+              <SortHeader label="Customer since" column="since" {...sortProps} />
+              <SortHeader label="Registered" column="registered" {...sortProps} />
+              <SortHeader label="First order" column="first_order" {...sortProps} />
+              <SortHeader label="Orders" column="orders" {...sortProps} />
+              <SortHeader label="Paid total" column="spent" {...sortProps} />
+              <SortHeader label="Last order" column="last_order" {...sortProps} />
             </tr>
           </thead>
           <tbody>
@@ -68,7 +90,8 @@ export default async function CustomersAdmin({ searchParams }) {
             ))}
           </tbody>
         </table>
-        {!rows.length && <p className="p-6 text-center text-muted">No customers yet.</p>}
+        {!rows.length && <p className="p-6 text-center text-muted">{q ? "No customers match." : "No customers yet."}</p>}
+        <Pagination basePath={BASE} sp={sp} table={table} total={Number(total)} />
       </div>
     </div>
   );
