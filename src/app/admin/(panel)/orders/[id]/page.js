@@ -82,7 +82,8 @@ export default async function OrderAdmin({ params, searchParams }) {
           <Card title="Fulfilment">
             <ActionForm action={updateOrder} className="space-y-3">
               <input type="hidden" name="id" value={o.id} />
-              <select name="status" defaultValue={o.status} className="input capitalize">
+              {/* key: React resets the form after saving; remounting makes the dropdown show the newly saved status. */}
+              <select key={o.status} name="status" defaultValue={o.status} className="input capitalize">
                 {ORDER_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
               </select>
               <SubmitButton className="btn-primary w-full">Update status</SubmitButton>
