@@ -1,8 +1,10 @@
 "use client";
 import { useEffect, useId, useRef, useState } from "react";
+import { optimizeImage, MAX_EDGE } from "@/lib/optimize-image";
 
 const ACCEPT = "image/jpeg,image/png,image/webp";
-const MAX_BYTES = 8 * 1024 * 1024;
+const MAX_BYTES = 8 * 1024 * 1024; // after optimising (storage limit)
+const MAX_ORIGINAL = 40 * 1024 * 1024; // what we're willing to read and shrink in the browser
 
 function formatSize(bytes) {
   return bytes > 1024 * 1024 ? `${(bytes / 1024 / 1024).toFixed(1)} MB` : `${Math.round(bytes / 1024)} KB`;
@@ -19,7 +21,10 @@ export default function ImageUpload({ name, multiple = false, required = false, 
   const [items, setItems] = useState([]); // [{ file, url }]
   const [error, setError] = useState("");
   const [dragging, setDragging] = useState(false);
+  const [busy, setBusy] = useState(false);
   const files = items.map((i) => i.file);
+  // Files we've already optimised (so re-adding them doesn't process twice) and their original sizes.
+  const optimised = useRef(new WeakMap());
 
   // Every preview URL we create, so they can all be released on unmount.
   const urls = useRef(new Set());
@@ -28,15 +33,32 @@ export default function ImageUpload({ name, multiple = false, required = false, 
     return () => set.forEach((u) => URL.revokeObjectURL(u));
   }, []);
 
-  function apply(list) {
-    const accepted = [];
+  async function apply(list) {
+    const valid = [];
     const problems = [];
     for (const f of list) {
-      if (!ACCEPT.split(",").includes(f.type)) problems.push(`${f.name}: use JPG, PNG or WebP`);
-      else if (f.size > MAX_BYTES) problems.push(`${f.name}: larger than 8 MB`);
+      if (!ACCEPT.split(",").includes(f.type) && !optimised.current.has(f)) problems.push(`${f.name}: use JPG, PNG or WebP`);
+      else if (f.size > MAX_ORIGINAL) problems.push(`${f.name}: larger than 40 MB`);
+      else valid.push(f);
+    }
+    const picked = multiple ? valid : valid.slice(0, 1);
+    // Shrink large images in the browser (see lib/optimize-image.js) so the save stays under Netlify's request limit.
+    setBusy(true);
+    const processed = await Promise.all(
+      picked.map(async (f) => {
+        if (optimised.current.has(f)) return f;
+        const out = await optimizeImage(f);
+        optimised.current.set(out, f.size);
+        return out;
+      })
+    );
+    setBusy(false);
+    const accepted = [];
+    for (const f of processed) {
+      if (f.size > MAX_BYTES) problems.push(`${f.name}: still larger than 8 MB after resizing`);
       else accepted.push(f);
     }
-    const chosen = multiple ? accepted : accepted.slice(0, 1);
+    const chosen = accepted;
     const dt = new DataTransfer();
     chosen.forEach((f) => dt.items.add(f));
     input.current.files = dt.files; // keep the form's input in sync
@@ -47,7 +69,7 @@ export default function ImageUpload({ name, multiple = false, required = false, 
         url = URL.createObjectURL(file);
         urls.current.add(url);
       }
-      return { file, url };
+      return { file, url, original: optimised.current.get(file) || file.size };
     });
     items.forEach((i) => {
       if (!chosen.includes(i.file)) {
@@ -95,6 +117,8 @@ export default function ImageUpload({ name, multiple = false, required = false, 
         </label>
         <p className="text-xs text-muted">or drag and drop {multiple ? "images" : "an image"} here</p>
         {hint && <p className="text-xs text-muted">{hint}</p>}
+        <p className="text-[11px] text-muted">Large images are resized to {MAX_EDGE}px and compressed automatically.</p>
+        {busy && <p className="text-xs font-medium text-gold-dark" role="status">Optimising image…</p>}
         <input
           ref={input}
           id={id}
@@ -103,6 +127,7 @@ export default function ImageUpload({ name, multiple = false, required = false, 
           accept={ACCEPT}
           multiple={multiple}
           required={required && files.length === 0}
+          data-optimising={busy ? "true" : undefined}
           onChange={(e) => apply([...(multiple ? files : []), ...e.target.files])}
           className="sr-only"
         />
@@ -112,14 +137,17 @@ export default function ImageUpload({ name, multiple = false, required = false, 
 
       {files.length > 0 && (
         <ul className={`mt-3 grid gap-3 ${multiple ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-1"}`}>
-          {items.map(({ file: f, url }, i) => (
+          {items.map(({ file: f, url, original }, i) => (
             <li key={`${f.name}-${i}`} className={`border border-line bg-white ${multiple ? "" : "flex items-center gap-3 p-2"}`}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={url} alt="" className={multiple ? "aspect-[4/5] w-full object-cover" : "h-16 w-24 flex-none object-cover"} />
               <div className={`flex min-w-0 flex-1 items-center justify-between gap-2 text-xs ${multiple ? "p-2" : ""}`}>
                 <span className="min-w-0">
                   <span className="block truncate">{f.name}</span>
-                  <span className="text-muted">{formatSize(f.size)} · new</span>
+                  <span className="text-muted">
+                    {formatSize(f.size)}
+                    {original > f.size ? ` (resized from ${formatSize(original)})` : ""} · new
+                  </span>
                 </span>
                 <button type="button" onClick={() => removeAt(i)} className="flex-none text-red-600 underline">
                   Remove
