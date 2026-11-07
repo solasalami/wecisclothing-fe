@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { query } from "@/lib/db";
 import { formatNaira, formatDate } from "@/lib/format";
-import { tableParams } from "@/lib/admin-table";
-import { SortHeader, Pagination, KeepTableState } from "@/components/admin/TableControls";
+import { tableParams, dateRangeSql } from "@/lib/admin-table";
+import { SortHeader, Pagination, KeepTableState, TableToolbar, DateRangeFields } from "@/components/admin/TableControls";
 
 const BASE = "/admin/products";
 import { PageHeader, Badge } from "@/components/admin/Fields";
@@ -18,6 +18,9 @@ export default async function ProductsAdmin({ searchParams }) {
   if (sp.kind === "package" || sp.kind === "product") { where.push("p.kind = ?"); params.push(sp.kind); }
   if (sp.status === "hidden") where.push("p.is_active = 0");
   if (sp.status === "live") where.push("p.is_active = 1");
+  const dates = dateRangeSql(sp, "p.created_at");
+  where.push(...dates.where);
+  params.push(...dates.params);
   const table = tableParams(sp, {
     sorts: { price: "p.price", added: "p.created_at", stock: "IF(p.track_stock, p.stock_qty, NULL)" },
     fallback: "p.is_active DESC, p.sort_order, p.id DESC",
@@ -38,14 +41,16 @@ export default async function ProductsAdmin({ searchParams }) {
         <Link href="/admin/products/new" className="btn-primary">Add product</Link>
         <Link href="/admin/products/new?kind=package" className="btn-outline">Add package</Link>
       </PageHeader>
-      <form className="mb-4 flex flex-wrap gap-2">
+      <form className="mb-4 flex flex-wrap items-end gap-2">
         <input name="q" defaultValue={sp.q || ""} placeholder="Search name or SKU" className="input max-w-xs" />
         <select name="kind" defaultValue={sp.kind || ""} className="input max-w-40"><option value="">All types</option><option value="product">Products</option><option value="package">Packages</option></select>
         <select name="status" defaultValue={sp.status || ""} className="input max-w-40"><option value="">Any status</option><option value="live">Visible</option><option value="hidden">Hidden</option></select>
+        <DateRangeFields basePath={BASE} sp={sp} label="Added" />
         <KeepTableState table={table} />
         <button className="btn-outline !py-2">Filter</button>
       </form>
       <div className="overflow-x-auto border border-line bg-white">
+        <TableToolbar basePath={BASE} sp={sp} table={table} total={Number(total)} />
         <table className="w-full text-left text-sm">
           <thead className="border-b border-line bg-soft text-xs uppercase text-muted">
             <tr>

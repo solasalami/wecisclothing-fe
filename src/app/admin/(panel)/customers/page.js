@@ -1,8 +1,8 @@
 import { query } from "@/lib/db";
 import { formatDate, formatNaira } from "@/lib/format";
 import { PageHeader } from "@/components/admin/Fields";
-import { tableParams } from "@/lib/admin-table";
-import { SortHeader, Pagination, KeepTableState } from "@/components/admin/TableControls";
+import { tableParams, dateRangeSql } from "@/lib/admin-table";
+import { SortHeader, Pagination, KeepTableState, TableToolbar, DateRangeFields } from "@/components/admin/TableControls";
 
 export const metadata = { title: "Customers" };
 
@@ -38,8 +38,16 @@ export default async function CustomersAdmin({ searchParams }) {
     tiebreak: "email",
   });
   const sortProps = { basePath: BASE, sp, table };
-  const filter = like ? "WHERE t.email LIKE ? OR t.phone LIKE ? OR t.name LIKE ?" : "";
-  const params = like ? [like, like, like] : [];
+  const conds = [];
+  const params = [];
+  if (like) {
+    conds.push("(t.email LIKE ? OR t.phone LIKE ? OR t.name LIKE ?)");
+    params.push(like, like, like);
+  }
+  const dates = dateRangeSql(sp, "t.since");
+  conds.push(...dates.where);
+  params.push(...dates.params);
+  const filter = conds.length ? `WHERE ${conds.join(" AND ")}` : "";
   const [rows, [{ total }]] = await Promise.all([
     query(`SELECT * FROM (${CUSTOMERS_SQL}) t ${filter} ORDER BY ${table.orderBy} LIMIT ? OFFSET ?`, [...params, table.per, table.offset]),
     query(`SELECT COUNT(*) total FROM (${CUSTOMERS_SQL}) t ${filter}`, params),
@@ -47,12 +55,14 @@ export default async function CustomersAdmin({ searchParams }) {
   return (
     <div>
       <PageHeader title="Customers" />
-      <form className="mb-4 flex gap-2">
+      <form className="mb-4 flex flex-wrap items-end gap-2">
         <input name="q" defaultValue={q} placeholder="Name, email or phone" className="input max-w-xs" />
+        <DateRangeFields basePath={BASE} sp={sp} label="Customer since" />
         <KeepTableState table={table} />
         <button className="btn-outline !py-2">Search</button>
       </form>
       <div className="overflow-x-auto border border-line bg-white">
+        <TableToolbar basePath={BASE} sp={sp} table={table} total={Number(total)} />
         <table className="w-full text-left text-sm">
           <thead className="border-b border-line bg-soft text-xs uppercase text-muted">
             <tr>
@@ -90,7 +100,7 @@ export default async function CustomersAdmin({ searchParams }) {
             ))}
           </tbody>
         </table>
-        {!rows.length && <p className="p-6 text-center text-muted">{q ? "No customers match." : "No customers yet."}</p>}
+        {!rows.length && <p className="p-6 text-center text-muted">{q || sp.from || sp.to ? "No customers match." : "No customers yet."}</p>}
         <Pagination basePath={BASE} sp={sp} table={table} total={Number(total)} />
       </div>
     </div>

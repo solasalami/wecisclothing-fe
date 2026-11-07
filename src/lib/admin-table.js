@@ -30,3 +30,37 @@ export function tableHref(basePath, sp, changes = {}) {
   const qs = params.toString();
   return qs ? `${basePath}?${qs}` : basePath;
 }
+
+// ---------- Date range filters (?from=YYYY-MM-DD&to=YYYY-MM-DD) ----------
+// Dates are Lagos calendar days (UTC+1, no daylight saving); the database stores UTC.
+
+const isDay = (v) => typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v) && !Number.isNaN(Date.parse(`${v}T00:00:00Z`));
+const lagosMidnightUtc = (day) => new Date(`${day}T00:00:00+01:00`).toISOString().slice(0, 19).replace("T", " ");
+
+/** Valid { from, to } from the URL (swapped if entered the wrong way round). */
+export function dateParams(sp) {
+  let from = isDay(sp.from) ? sp.from : "";
+  let to = isDay(sp.to) ? sp.to : "";
+  if (from && to && from > to) [from, to] = [to, from];
+  return { from, to };
+}
+
+/**
+ * SQL conditions for a date column, inclusive of both days.
+ * Returns { where: [...sql], params: [...] } to merge into a query.
+ */
+export function dateRangeSql(sp, column) {
+  const { from, to } = dateParams(sp);
+  const where = [];
+  const params = [];
+  if (from) {
+    where.push(`${column} >= ?`);
+    params.push(lagosMidnightUtc(from));
+  }
+  if (to) {
+    const next = new Date(Date.parse(`${to}T00:00:00Z`) + 864e5).toISOString().slice(0, 10);
+    where.push(`${column} < ?`);
+    params.push(lagosMidnightUtc(next));
+  }
+  return { where, params };
+}

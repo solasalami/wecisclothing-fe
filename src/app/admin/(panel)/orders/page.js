@@ -1,9 +1,9 @@
 import { query } from "@/lib/db";
 import { PageHeader } from "@/components/admin/Fields";
 import OrdersTable from "@/components/admin/OrdersTable";
-import { Pagination, KeepTableState } from "@/components/admin/TableControls";
+import { Pagination, KeepTableState, TableToolbar, DateRangeFields } from "@/components/admin/TableControls";
 import { ORDER_STATUSES, PAYMENT_STATUSES } from "@/lib/orders";
-import { tableParams } from "@/lib/admin-table";
+import { tableParams, dateRangeSql } from "@/lib/admin-table";
 
 const BASE = "/admin/orders";
 
@@ -17,6 +17,9 @@ export default async function OrdersAdmin({ searchParams }) {
   if (sp.status === "open") where.push("status IN ('pending','processing','ready')");
   else if (ORDER_STATUSES.includes(sp.status)) { where.push("status = ?"); params.push(sp.status); }
   if (PAYMENT_STATUSES.includes(sp.payment)) { where.push("payment_status = ?"); params.push(sp.payment); }
+  const dates = dateRangeSql(sp, "created_at");
+  where.push(...dates.where);
+  params.push(...dates.params);
   const table = tableParams(sp, { sorts: { date: "created_at", total: "total" }, fallback: "id DESC" });
   const [orders, [{ total }]] = await Promise.all([
     query(
@@ -29,7 +32,7 @@ export default async function OrdersAdmin({ searchParams }) {
   return (
     <div>
       <PageHeader title="Orders" />
-      <form className="mb-4 flex flex-wrap gap-2">
+      <form className="mb-4 flex flex-wrap items-end gap-2">
         <input name="q" defaultValue={sp.q || ""} placeholder="Order no, name, email, phone" className="input max-w-xs" />
         <select name="status" defaultValue={sp.status || ""} className="input max-w-40">
           <option value="">Any status</option><option value="open">Open (to fulfil)</option>
@@ -39,10 +42,12 @@ export default async function OrdersAdmin({ searchParams }) {
           <option value="">Any payment</option>
           {PAYMENT_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
         </select>
+        <DateRangeFields basePath={BASE} sp={sp} label="Order date" />
         <KeepTableState table={table} />
         <button className="btn-outline !py-2">Filter</button>
       </form>
       <div className="border border-line bg-white">
+        <TableToolbar basePath={BASE} sp={sp} table={table} total={Number(total)} />
         <div className="px-4 pt-2">
           <OrdersTable orders={orders} sortable={{ basePath: BASE, sp, table }} empty="No orders match." />
         </div>
