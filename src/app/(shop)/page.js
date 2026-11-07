@@ -46,6 +46,13 @@ export default async function HomePage() {
           {campaign.home_show_packages && packages.items.length > 0 && (
             <div className="mt-10">
               <ProductGrid products={packages.items} />
+              {campaign.home_packages_cta && (
+                <div className="mt-10 text-center">
+                  <Link href={`/${campaign.slug}`} className="btn-primary" data-track-location="home_packages">
+                    {campaign.home_packages_cta}
+                  </Link>
+                </div>
+              )}
             </div>
           )}
         </section>

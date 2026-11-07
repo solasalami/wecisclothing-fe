@@ -297,6 +297,7 @@ export async function saveCampaign(_prev, fd) {
     home_title: str(fd, "home_title"),
     home_subtitle: str(fd, "home_subtitle"),
     home_show_packages: !!bool(fd, "home_show_packages"),
+    home_packages_cta: str(fd, "home_packages_cta").slice(0, 60),
     home_eyebrow: str(fd, "home_eyebrow"),
     home_cta: str(fd, "home_cta"),
     show_announcement: !!bool(fd, "show_announcement"),

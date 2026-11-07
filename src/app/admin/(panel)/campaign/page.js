@@ -111,7 +111,7 @@ export default async function CampaignAdmin({ searchParams }) {
                 <Check label="Remove" name="remove_hero" />
               </div>
             )}
-            <ImageUpload name="hero_image" buttonLabel={c.hero_image ? "Replace image" : "Choose image"} hint="Optional · wide image, at least 1800×900. Without one, the hero uses the champagne background." />
+            <ImageUpload name="hero_image" buttonLabel={c.hero_image ? "Replace image" : "Choose image"} hint="Optional · wide photo, at least 1800×900, shown behind the title. Without one, the homepage banner image (below) is shown at the top of the campaign page instead." />
           </div>
           <Field label="Main button text" name="cta_label" defaultValue={c.cta_label} />
           <RichText label="Extra text (optional)" name="body" defaultValue={c.body} />
@@ -178,6 +178,13 @@ export default async function CampaignAdmin({ searchParams }) {
           <Field label="Title" name="home_title" defaultValue={c.home_title} placeholder={c.title} hint="Blank = same as the landing page title." />
           <TextArea label="Sub-heading" name="home_subtitle" rows={2} defaultValue={c.home_subtitle} placeholder={c.subtitle} hint="Blank = same as the landing page sub-heading." />
           <Check label="Show published packages under this section" name="home_show_packages" defaultChecked={c.home_show_packages} />
+          <Field
+            label="Button under the packages"
+            name="home_packages_cta"
+            defaultValue={c.home_packages_cta}
+            placeholder="Explore packages"
+            hint={`Links to /${c.slug}. Leave blank to hide the button.`}
+          />
         </Card>
 
         <Card title="Announcement bar">

@@ -33,7 +33,11 @@ export async function generateMetadata({ params }) {
     description: campaign.subtitle || stripHtml(campaign.body).slice(0, 160),
     alternates: { canonical: `/${campaign.slug}` },
     robots: status === "live" ? undefined : { index: false },
-    openGraph: { title: campaign.title, description: campaign.subtitle, images: campaign.hero_image ? [campaign.hero_image] : [] },
+    openGraph: {
+      title: campaign.title,
+      description: campaign.subtitle,
+      images: campaign.hero_image || campaign.home_image ? [campaign.hero_image || campaign.home_image] : [],
+    },
   };
 }
 
@@ -50,6 +54,10 @@ export default async function CampaignPage({ params }) {
   const [packages, showrooms] = await Promise.all([listProducts({ kind: "package", limit: 48 }), getShowrooms()]);
   const end = countdownEnd(campaign);
   const hasHero = Boolean(campaign.hero_image);
+  // No hero photo? Use the homepage banner (it carries its own text, so it is shown
+  // whole above the title rather than behind it).
+  const banner = !hasHero && campaign.home_image ? { desktop: campaign.home_image, mobile: campaign.home_image_mobile } : null;
+  const bannerAlt = campaign.home_image_alt || campaign.title;
 
   return (
     <div>
@@ -60,6 +68,21 @@ export default async function CampaignPage({ params }) {
         </div>
       )}
 
+      {banner && (
+        <a href="#packages" className="block" aria-label={`${bannerAlt}: see the packages`}>
+          <Image
+            src={banner.desktop}
+            alt={bannerAlt}
+            width={1800}
+            height={600}
+            priority
+            sizes="100vw"
+            className={`h-auto w-full ${banner.mobile ? "hidden md:block" : ""}`}
+          />
+          {banner.mobile && <Image src={banner.mobile} alt={bannerAlt} width={900} height={1100} priority sizes="100vw" className="h-auto w-full md:hidden" />}
+        </a>
+      )}
+
       {/* Champagne hero by default; with an uploaded photo, a soft dark overlay keeps text readable. */}
       <section className={`relative overflow-hidden ${hasHero ? "bg-ink text-white" : "border-b border-gold/40 bg-gold-light text-ink"}`}>
         {hasHero && (
@@ -68,7 +91,7 @@ export default async function CampaignPage({ params }) {
             <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/40 to-black/60" aria-hidden="true" />
           </>
         )}
-        <div className="relative mx-auto max-w-5xl px-4 py-20 text-center md:py-28">
+        <div className={`relative mx-auto max-w-5xl px-4 text-center ${banner ? "py-12 md:py-16" : "py-20 md:py-28"}`}>
           {campaign.eyebrow && <p className={`text-xs uppercase tracking-[0.35em] ${hasHero ? "text-gold" : "text-gold-dark"}`}>{campaign.eyebrow}</p>}
           <h1 className="mt-4 text-5xl leading-tight md:text-7xl">{campaign.title}</h1>
           {campaign.subtitle && <p className={`mx-auto mt-5 max-w-2xl text-lg ${hasHero ? "text-white/85" : "text-ink/70"}`}>{campaign.subtitle}</p>}
