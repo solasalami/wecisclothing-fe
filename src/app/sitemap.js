@@ -17,6 +17,7 @@ export default async function sitemap() {
     ...(isCampaignLive(campaign) ? [{ url: `${base}/${campaign.slug}`, changeFrequency: "daily", priority: 0.9 }] : []),
     { url: `${base}/shop`, changeFrequency: "daily", priority: 0.8 },
     { url: `${base}/contact`, priority: 0.6 },
+    { url: `${base}/contact-us`, priority: 0.5 },
     { url: `${base}/size-guide`, priority: 0.5 },
     ...categories.map((c) => ({ url: `${base}/category/${c.slug}`, lastModified: c.updated_at, priority: 0.8 })),
     ...products.map((p) => ({ url: `${base}/product/${p.slug}`, lastModified: p.updated_at, priority: 0.7 })),

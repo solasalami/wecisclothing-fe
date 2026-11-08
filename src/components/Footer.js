@@ -63,7 +63,8 @@ export default function Footer({ store, showrooms, categories, pages, campaign }
               </li>
             ))}
             <li><Link href="/size-guide" className="hover:text-gold">Size guide</Link></li>
-            <li><Link href="/contact" className="hover:text-gold">Contact &amp; showrooms</Link></li>
+            <li><Link href="/contact-us" className="hover:text-gold">Contact us</Link></li>
+            <li><Link href="/contact" className="hover:text-gold">Showrooms</Link></li>
             <li><Link href="/account" className="hover:text-gold">My account</Link></li>
           </ul>
         </div>

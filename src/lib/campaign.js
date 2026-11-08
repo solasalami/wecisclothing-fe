@@ -4,7 +4,8 @@
 const LAGOS_OFFSET = "+01:00";
 
 export const RESERVED_SLUGS = new Set([
-  "shop", "category", "product", "cart", "checkout", "account", "contact", "pages",
+  "shop", "category", "product", "cart", "checkout", "account", "contact", "contact-us", "pages", "size-guide",
+  "index.php", "maintenance",
   "admin", "api", "media", "sitemap.xml", "robots.txt", "icon.png", "_next", "favicon.ico",
 ]);
 

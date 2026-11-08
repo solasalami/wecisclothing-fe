@@ -38,12 +38,13 @@ function getTransporter() {
 }
 
 /** Send one email. Returns { ok, id } or { ok: false, error }; never throws. */
-export async function sendMail({ to, subject, html, text, replyTo }) {
+export async function sendMail({ to, bcc, subject, html, text, replyTo }) {
   if (!emailEnabled()) return { ok: false, error: `Email disabled or not configured (${emailMissingVars().join(", ") || "check SMTP settings"})` };
   try {
     const info = await getTransporter().sendMail({
       from: env("FROM_EMAIL") || env("SMTP_USER"),
       to,
+      bcc: bcc || undefined,
       subject,
       html,
       text,

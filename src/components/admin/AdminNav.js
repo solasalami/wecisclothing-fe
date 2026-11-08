@@ -12,6 +12,7 @@ const LINKS = [
   ["/admin/campaign", "Seasonal campaign", true],
   ["/admin/categories", "Categories"],
   ["/admin/customers", "Customers"],
+  ["/admin/messages", "Messages"],
   ["/admin/banners", "Home banners"],
   ["/admin/showrooms", "Showrooms"],
   ["/admin/pages", "Info pages"],
@@ -30,7 +31,7 @@ export default function AdminNav({ admin }) {
     <aside className="bg-logo-blue text-white lg:min-h-screen lg:w-60 lg:flex-none">
       <div className="flex items-center justify-between p-4 lg:block">
         <Link href="/admin" className="flex items-center gap-3 lg:flex-col lg:items-start lg:gap-2" aria-label="Wecis Admin dashboard">
-          <Image src="/logo.png" alt="Wecis Clothing" width={64} height={62} priority className="h-10 w-auto rounded-full bg-white lg:h-16" />
+          <Image src="/logo.png" alt="Wecis Clothing" width={64} height={62} loading="eager" className="h-10 w-auto rounded-full bg-white lg:h-16" />
           <span className="font-display text-xl font-semibold">Wecis Admin</span>
         </Link>
         <button className="lg:hidden" onClick={() => setOpen((v) => !v)} aria-label="Toggle menu">☰</button>

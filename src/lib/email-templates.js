@@ -204,3 +204,30 @@ This link works for 3 days. If you didn't create an account with us, you can ign
 ${store.name}`;
   return { subject, html: layout({ siteUrl, preheader: "Confirm your email to see all your orders.", body, store, showrooms: [] }), text };
 }
+
+/** A reply from Admin, Messages to someone who used the Contact us form. */
+export function contactReplyEmail({ message, reply, store, siteUrl }) {
+  const subject = `Re: ${message.topic} (your message to ${store.name})`;
+  const para = (t) => esc(t).replace(/\n/g, "<br>");
+  const body = `
+    <tr><td style="padding:32px 32px 8px;">
+      <h1 style="margin:0;font:400 28px/1.25 ${SERIF};color:${C.ink};">Hello ${esc(message.name)},</h1>
+      <p style="margin:14px 0 0;font:15px/1.6 ${SANS};color:${C.ink};">${para(reply)}</p>
+    </td></tr>
+    <tr><td style="padding:16px 32px 28px;">
+      <p style="margin:0 0 8px;font:600 11px/1 ${SANS};letter-spacing:2px;text-transform:uppercase;color:${C.goldDark};">Your message (${esc(formatDate(message.created_at))})</p>
+      <p style="margin:0;padding:14px;background:${C.champagne};font:14px/1.6 ${SANS};color:${C.muted};">${para(message.message)}</p>
+      <p style="margin:14px 0 0;font:13px/1.6 ${SANS};color:${C.muted};">You can reply to this email to continue the conversation.</p>
+    </td></tr>`;
+  const quoted = String(message.message).split("\n").map((l) => `> ${l}`).join("\n");
+  const text = `Hello ${message.name},
+
+${reply}
+
+On ${formatDate(message.created_at)} you wrote:
+${quoted}
+
+You can reply to this email to continue the conversation.
+${store.name}`;
+  return { subject, html: layout({ siteUrl, preheader: reply.slice(0, 120), body, store, showrooms: [] }), text };
+}

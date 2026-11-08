@@ -37,11 +37,11 @@ export function ActionForm({ action, children, className = "space-y-6", encType 
   );
 }
 
-export function SubmitButton({ children = "Save", className = "btn-primary" }) {
+export function SubmitButton({ children = "Save", className = "btn-primary", pendingText = "Saving…" }) {
   const { pending } = useFormStatus();
   return (
     <button type="submit" disabled={pending} className={className}>
-      {pending ? "Saving…" : children}
+      {pending ? pendingText : children}
     </button>
   );
 }

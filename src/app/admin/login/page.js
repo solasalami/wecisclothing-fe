@@ -11,7 +11,7 @@ export default async function AdminLoginPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-soft px-4">
       <div className="w-full max-w-sm border border-line bg-white p-8">
-        <Image src="/logo.png" alt="Wecis Clothing" width={72} height={70} className="mx-auto" />
+        <Image src="/logo.png" alt="Wecis Clothing" width={72} height={70} loading="eager" className="mx-auto" />
         <h1 className="mb-6 mt-4 text-center text-2xl">Admin sign in</h1>
         <LoginForm />
       </div>

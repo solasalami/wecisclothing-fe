@@ -13,6 +13,7 @@ import { markOrderPaid, ORDER_STATUSES } from "@/lib/orders";
 import { queueOrderPaidEmails, sendOrderPaidEmails } from "@/lib/order-emails";
 import { RESERVED_SLUGS } from "@/lib/campaign";
 import { SIZE_MEASURES, parseRange } from "@/lib/size-guide";
+import { sendReply } from "@/lib/contact";
 
 // Clear cached storefront data after any content change (see lib/cache.js).
 const invalidateStore = () => updateTag(STORE_TAG);
@@ -421,6 +422,32 @@ export async function saveSettings(_prev, fd) {
   await saveSetting("tracking", { ...tracking, gtm_id: gtm });
   invalidateStore();
   return { ok: "Settings saved" };
+}
+
+// ---------------- contact messages ----------------
+const safeBack = (v) => (typeof v === "string" && v.startsWith("/admin/messages") ? v : "/admin/messages");
+
+export async function setMessageRead(fd) {
+  await requireAdmin();
+  await query("UPDATE contact_messages SET read_at = IF(?, COALESCE(read_at, UTC_TIMESTAMP()), NULL) WHERE id = ?", [fd.get("read") === "1" ? 1 : 0, Number(fd.get("id"))]);
+  redirect(safeBack(fd.get("back")));
+}
+
+export async function replyToMessage(_prev, fd) {
+  const admin = await requireAdmin();
+  const body = str(fd, "body");
+  if (body.length < 2) return { error: "Please write your reply." };
+  if (body.length > 10000) return { error: "Please keep the reply under 10,000 characters." };
+  const res = await sendReply({ messageId: Number(fd.get("id")), body, admin, store: await getSetting("store") });
+  if (res.error) return { error: res.error };
+  revalidatePath("/admin/messages");
+  return { ok: `Reply sent to ${res.sentTo}${res.copiedTo ? `, copy in ${res.copiedTo}` : ""}.` };
+}
+
+export async function deleteMessage(fd) {
+  await requireAdmin();
+  await query("DELETE FROM contact_messages WHERE id = ?", [Number(fd.get("id"))]);
+  redirect(safeBack(fd.get("back")));
 }
 
 // ---------------- size guide ----------------

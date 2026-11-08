@@ -206,3 +206,32 @@ CREATE TABLE IF NOT EXISTS pages (
   sort_order INT NOT NULL DEFAULT 0,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Messages from the website contact form (/contact-us)
+CREATE TABLE IF NOT EXISTS contact_messages (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(120) NOT NULL,
+  email VARCHAR(190) NOT NULL,
+  phone VARCHAR(40) NULL,
+  topic VARCHAR(60) NOT NULL,
+  message TEXT NOT NULL,
+  ip VARCHAR(64) NULL,                       -- for rate limiting only
+  user_agent VARCHAR(255) NULL,
+  nonce CHAR(32) NOT NULL UNIQUE,            -- one submission per captcha question
+  read_at DATETIME NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_msg_created (created_at),
+  KEY idx_msg_ip (ip, created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS contact_replies (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  message_id INT UNSIGNED NOT NULL,
+  body TEXT NOT NULL,
+  sent_by VARCHAR(120) NULL,                 -- admin name at the time of sending
+  sent_to VARCHAR(190) NOT NULL,             -- customer email
+  copied_to VARCHAR(190) NULL,               -- store mailbox that got the Bcc copy
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_reply_msg (message_id, created_at),
+  CONSTRAINT fk_reply_msg FOREIGN KEY (message_id) REFERENCES contact_messages(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

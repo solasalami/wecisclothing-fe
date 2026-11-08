@@ -23,6 +23,7 @@ export default function Header({ categories, store, campaign, account }) {
     ...(campaignLive ? [{ href: `/${campaign.slug}`, label: campaign.name, festive: true, children: [] }] : []),
     { href: "/shop", label: "Shop All", children: [] },
     { href: "/contact", label: "Showrooms", children: [] },
+    { href: "/contact-us", label: "Contact Us", children: [] },
   ];
 
   function onSearch(e) {
@@ -73,7 +74,7 @@ export default function Header({ categories, store, campaign, account }) {
         </button>
 
         <Link href="/" className="flex items-center gap-2" aria-label="Wecis Clothing home">
-          <Image src="/logo.png" alt="Wecis Clothing" width={56} height={54} priority className="h-12 w-auto" />
+          <Image src="/logo.png" alt="Wecis Clothing" width={56} height={54} loading="eager" className="h-12 w-auto" />
           <span className="hidden font-display text-2xl tracking-[0.12em] sm:inline">WECIS CLOTHING</span>
         </Link>
 
