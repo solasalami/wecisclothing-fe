@@ -2,6 +2,7 @@ import "server-only";
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { cache } from "react";
 import bcrypt from "bcryptjs";
 import { queryOne } from "./db";
 
@@ -56,11 +57,12 @@ export async function endAdminSession() {
 }
 
 /** Returns the logged-in admin (re-checked against the DB) or null. */
-export async function getAdmin() {
+// cache(): the layout and the page both check the admin; this makes it one query per request.
+export const getAdmin = cache(async function getAdmin() {
   const payload = await verifyToken((await cookies()).get(ADMIN_COOKIE)?.value);
   if (payload?.kind !== "admin") return null;
   return queryOne("SELECT id, name, email, role FROM admin_users WHERE id = ? AND is_active = 1", [payload.sub]);
-}
+});
 
 export async function requireAdmin() {
   const admin = await getAdmin();

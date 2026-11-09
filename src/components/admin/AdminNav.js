@@ -1,5 +1,5 @@
 "use client";
-import Link from "next/link";
+import Link, { useLinkStatus } from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
@@ -51,6 +51,7 @@ export default function AdminNav({ admin }) {
             {festive && (
               <span className={`h-1.5 w-1.5 rounded-full ${active(href) ? "bg-white" : "bg-gold"}`} aria-hidden="true" />
             )}
+            <PendingDot />
           </Link>
         ))}
         <div className="mt-6 border-t border-white/25 px-4 pt-4 text-xs font-semibold text-white">
@@ -63,5 +64,17 @@ export default function AdminNav({ admin }) {
         </div>
       </nav>
     </aside>
+  );
+}
+
+// Lights up on the clicked link until the next page starts showing, so a click on a
+// slow connection is visibly registered. Always rendered (opacity only) to avoid layout shift.
+function PendingDot() {
+  const { pending } = useLinkStatus();
+  return (
+    <span
+      aria-hidden="true"
+      className={`ml-auto h-2 w-2 rounded-full bg-white transition-opacity ${pending ? "animate-pulse opacity-100" : "opacity-0"}`}
+    />
   );
 }
