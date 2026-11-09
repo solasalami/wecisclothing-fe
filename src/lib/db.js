@@ -4,23 +4,34 @@ import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { getDbConfig } from "./db-config.mjs";
 
-// On serverless (Netlify Functions = AWS Lambda) each warm instance keeps its own pool,
-// and frozen instances keep idle sockets open on the MySQL server. Shared hosts cap
-// connections per user (often 10–25), so there we use a tiny pool and close
-// connections as soon as they're released (maxIdle 0), so nothing lingers between requests.
+// On serverless (Netlify Functions = AWS Lambda) each warm instance keeps its own pool.
+// Shared hosts cap connections per user (often 10–25) and their firewalls (CSF, cPHulk,
+// Imunify) can ban an IP that opens many connections in a short time. So on serverless:
+//  - a tiny pool (2), but one connection is kept idle for a few seconds and reused, instead of
+//    opening a new TCP + TLS + MySQL handshake for every query;
+//  - a connection idle longer than IDLE_MS is never reused (the instance may have been frozen
+//    while the server dropped it); it is replaced with a fresh one.
 const SERVERLESS = Boolean(process.env.AWS_LAMBDA_FUNCTION_NAME || process.env.NETLIFY || process.env.VERCEL);
-const CONNECTION_LIMIT = Number(process.env.DB_CONNECTION_LIMIT) || (SERVERLESS ? 2 : 5);
-const MAX_IDLE = process.env.DB_MAX_IDLE !== undefined ? Number(process.env.DB_MAX_IDLE) : SERVERLESS ? 0 : CONNECTION_LIMIT;
+const envNum = (name, fallback) => (process.env[name] !== undefined && process.env[name] !== "" ? Number(process.env[name]) : fallback);
+const CONNECTION_LIMIT = envNum("DB_CONNECTION_LIMIT", SERVERLESS ? 2 : 5);
+const MAX_IDLE = envNum("DB_MAX_IDLE", SERVERLESS ? 1 : CONNECTION_LIMIT);
+const IDLE_MS = envNum("DB_IDLE_TIMEOUT", 10_000);
+
+// Timing budget. Netlify stops a function after 10s by default, so everything fits under that:
+// up to two connect attempts of CONNECT_TIMEOUT_MS each, all inside QUERY_TIMEOUT_MS.
+const CONNECT_TIMEOUT_MS = envNum("DB_CONNECT_TIMEOUT", 4000);
+const QUERY_TIMEOUT_MS = envNum("DB_QUERY_TIMEOUT", 8500);
 
 function createPool() {
   return mysql.createPool({
     ...getDbConfig(), // host/user/password/database/ssl from DB_* vars or DATABASE_URL
     connectionLimit: CONNECTION_LIMIT,
     maxIdle: MAX_IDLE,
-    idleTimeout: 10_000,
+    idleTimeout: IDLE_MS,
+    enableKeepAlive: true,
     waitForConnections: true,
     queueLimit: 100,
-    connectTimeout: 5000, // fail fast (default is 10s) so visitors aren't left hanging
+    connectTimeout: CONNECT_TIMEOUT_MS,
     decimalNumbers: true,
     dateStrings: false,
     timezone: "Z",
@@ -33,19 +44,40 @@ function getPool() {
   return g.__wecisPool ?? (g.__wecisPool = createPool());
 }
 
+/** "host:port" for log lines (never the password). */
+function dbTarget() {
+  try {
+    const c = getDbConfig();
+    return `${c.host}:${c.port}`;
+  } catch {
+    return "(invalid config)";
+  }
+}
+
 // mysql2 never rejects queries queued for a connection when the server is unreachable,
-// so during an outage we (a) cap every query with a timeout, (b) stop sending queries for a
+// so during an outage we (a) cap every query with a deadline, (b) stop sending queries for a
 // few seconds (circuit breaker) and (c) replace the pool, which releases anything stuck in it.
-const QUERY_TIMEOUT_MS = 6000; // a little above connectTimeout
 const CIRCUIT_OPEN_MS = 5000;
 let circuitOpenUntil = 0;
 
-function withTimeout(promise) {
+/**
+ * Run fn(state) with an overall deadline. fn updates state.phase as it goes, so a timeout
+ * says what it was stuck on: "waiting for a free pool slot", "connecting" or "running query".
+ */
+async function withDeadline(fn) {
+  const state = { phase: "connecting", attempt: 1, started: Date.now() };
   let timer;
   const timeout = new Promise((_, reject) => {
-    timer = setTimeout(() => reject(Object.assign(new Error("Database query timed out"), { code: "ETIMEDOUT" })), QUERY_TIMEOUT_MS);
+    timer = setTimeout(
+      () => reject(Object.assign(new Error(`Database ${state.phase} took over ${QUERY_TIMEOUT_MS}ms`), { code: "QUERY_TIMEOUT", phase: state.phase, attempt: state.attempt, ms: Date.now() - state.started })),
+      QUERY_TIMEOUT_MS
+    );
   });
-  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+  try {
+    return await Promise.race([fn(state), timeout]);
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 function tripCircuit() {
@@ -60,13 +92,92 @@ function assertCircuitClosed() {
   if (Date.now() < circuitOpenUntil) throw Object.assign(new Error("Database circuit open"), { code: "CIRCUIT_OPEN" });
 }
 
+// ---------- connections ----------
+
+// Errors where the connection was never established, so nothing reached the server and a
+// second attempt is always safe (e.g. a dropped SYN, or a firewall hiccup).
+const CONNECT_RETRY_CODES = new Set(["ETIMEDOUT", "ECONNRESET", "ECONNREFUSED", "EHOSTUNREACH", "ENETUNREACH", "EPIPE", "PROTOCOL_CONNECTION_LOST"]);
+// Errors meaning an established connection died. Only reads are retried after these, since a
+// write may already have been applied before the connection dropped.
+const LOST_CODES = new Set(["ECONNRESET", "EPIPE", "PROTOCOL_CONNECTION_LOST", "ETIMEDOUT"]);
+const isRead = (sql) => /^\s*(SELECT|SHOW|DESCRIBE|EXPLAIN)\b/i.test(sql);
+
+const LAST_USED = Symbol("wecisLastUsed");
+
+/** Is the pool full (every connection checked out), so a request has to queue? */
+function poolIsFull(pool) {
+  const core = pool.pool;
+  const all = core?._allConnections?.length ?? 0;
+  const free = core?._freeConnections?.length ?? 0;
+  return all >= CONNECTION_LIMIT && free === 0;
+}
+
+/** Get a usable connection: skips stale idle ones and retries one failed connect. */
+async function acquire(state) {
+  for (let stale = 0; ; ) {
+    const pool = getPool();
+    state.phase = poolIsFull(pool) ? "waiting for a free pool slot" : "connecting";
+    const t0 = Date.now();
+    let conn;
+    try {
+      conn = await pool.getConnection();
+    } catch (err) {
+      err.phase = "connecting";
+      err.attempt = state.attempt;
+      err.ms = Date.now() - t0;
+      if (state.attempt === 1 && CONNECT_RETRY_CODES.has(err.code) && Date.now() - state.started + CONNECT_TIMEOUT_MS < QUERY_TIMEOUT_MS) {
+        logRetry(err);
+        state.attempt = 2;
+        continue;
+      }
+      throw err;
+    }
+    const lastUsed = conn.connection[LAST_USED];
+    if (lastUsed && Date.now() - lastUsed > IDLE_MS && stale < 2) {
+      // Idle too long (e.g. the Lambda was frozen): the server may have closed it. Replace it.
+      conn.destroy();
+      stale++;
+      continue;
+    }
+    state.phase = "running query";
+    return conn;
+  }
+}
+
+function done(conn, { broken = false } = {}) {
+  if (!conn) return;
+  if (broken) {
+    conn.destroy();
+    return;
+  }
+  conn.connection[LAST_USED] = Date.now();
+  conn.release();
+}
+
+/** Run one statement. A read that loses its connection mid-way is retried once on a fresh one. */
+async function run(sql, params, state) {
+  const conn = await acquire(state);
+  try {
+    const [rows] = await conn.query(sql, params);
+    done(conn);
+    return rows;
+  } catch (err) {
+    const lost = LOST_CODES.has(err.code) || err.fatal === true;
+    done(conn, { broken: lost });
+    if (!lost || !isRead(sql) || state.retriedLost) throw err;
+    state.retriedLost = true;
+    logRetry(Object.assign(err, { phase: "running query", ms: Date.now() - state.started }));
+    return run(sql, params, state);
+  }
+}
+
 // ---------- "database unavailable" handling ----------
 
 const CONNECTION_ERROR_CODES = new Set([
   "ECONNREFUSED", "ENETUNREACH", "EHOSTUNREACH", "ETIMEDOUT", "ECONNRESET", "ENOTFOUND", "EAI_AGAIN", "EPIPE",
   "PROTOCOL_CONNECTION_LOST", "PROTOCOL_SEQUENCE_TIMEOUT", "POOL_CLOSED", "POOL_ENQUEUELIMIT",
   "ER_ACCESS_DENIED_ERROR", "ER_BAD_DB_ERROR", "ER_CON_COUNT_ERROR", "ER_TOO_MANY_USER_CONNECTIONS",
-  "ER_SERVER_SHUTDOWN", "ER_HOST_NOT_PRIVILEGED", "ER_HOST_IS_BLOCKED", "CIRCUIT_OPEN", "DB_CONFIG",
+  "ER_SERVER_SHUTDOWN", "ER_HOST_NOT_PRIVILEGED", "ER_HOST_IS_BLOCKED", "CIRCUIT_OPEN", "DB_CONFIG", "QUERY_TIMEOUT",
 ]);
 
 /** True when the error means "can't reach / use the database" rather than a bad query. */
@@ -79,13 +190,31 @@ export function isDatabaseUnavailable(err) {
   );
 }
 
+/** e.g. "ETIMEDOUT while connecting, attempt 2, after 4003ms, to db.example.com:3306" */
+function describe(err) {
+  if (err.code === "DB_CONFIG") return `configuration error: ${err.message}`;
+  const parts = [err.code || err.message];
+  if (err.phase) parts.push(`while ${err.phase}`);
+  if (err.attempt) parts.push(`attempt ${err.attempt}`);
+  if (err.ms != null) parts.push(`after ${err.ms}ms`);
+  parts.push(`to ${dbTarget()}`);
+  return parts.join(", ");
+}
+
 let lastLogged = 0;
 function logOutage(err) {
   // One log line per 30s instead of one per query.
   if (err.code === "CIRCUIT_OPEN" || Date.now() - lastLogged < 30_000) return;
   lastLogged = Date.now();
-  const detail = err.code === "DB_CONFIG" ? `configuration error: ${err.message}` : err.code || err.message;
-  console.error(`[db] Database unavailable (${detail}). Serving maintenance page.`);
+  console.error(`[db] Database unavailable (${describe(err)}). Serving maintenance page.`);
+}
+
+let lastRetryLogged = 0;
+function logRetry(err) {
+  // Recovered hiccups are worth seeing too (a pattern of them points at a firewall), but rate-limited.
+  if (Date.now() - lastRetryLogged < 30_000) return;
+  lastRetryLogged = Date.now();
+  console.warn(`[db] ${describe(err)}; retrying once.`);
 }
 
 /** Path of the page being rendered (set by src/proxy.js), so we can send visitors back after recovery. */
@@ -126,8 +255,7 @@ async function withBusyRetry(fn) {
 export async function query(sql, params = []) {
   try {
     assertCircuitClosed();
-    const [rows] = await withBusyRetry(() => withTimeout(getPool().query(sql, params)));
-    return rows;
+    return await withDeadline((state) => withBusyRetry(() => run(sql, params, state)));
   } catch (err) {
     return handle(err);
   }
@@ -142,10 +270,11 @@ export async function transaction(fn) {
   let conn;
   try {
     assertCircuitClosed();
-    conn = await withBusyRetry(() => withTimeout(getPool().getConnection()));
+    conn = await withDeadline((state) => withBusyRetry(() => acquire(state)));
   } catch (err) {
     return handle(err);
   }
+  let broken = false;
   try {
     await conn.beginTransaction();
     const result = await fn({
@@ -154,21 +283,23 @@ export async function transaction(fn) {
     await conn.commit();
     return result;
   } catch (err) {
+    broken = LOST_CODES.has(err?.code) || err?.fatal === true;
     await conn.rollback().catch(() => {});
     if (isDatabaseUnavailable(err)) return handle(err);
     throw err;
   } finally {
-    conn.release();
+    done(conn, { broken });
   }
 }
 
 /** Health check that never redirects. */
 export async function ping() {
   try {
-    await withTimeout(getPool().query("SELECT 1"));
+    await withDeadline((state) => run("SELECT 1", [], state));
     circuitOpenUntil = 0; // database is back: let normal queries through immediately
     return { ok: true };
   } catch (err) {
+    logOutage(err); // rate-limited; gives uptime-monitor failures a cause in the function logs
     return { ok: false, code: err.code || "UNKNOWN" };
   }
 }
