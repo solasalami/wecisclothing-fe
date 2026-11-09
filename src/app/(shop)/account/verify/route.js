@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { confirmEmailToken } from "@/lib/customers";
+import { publicUrl } from "@/lib/site-url";
 
 export const dynamic = "force-dynamic";
 
@@ -7,7 +8,7 @@ export const dynamic = "force-dynamic";
 export async function GET(request) {
   const url = new URL(request.url);
   const customer = await confirmEmailToken(url.searchParams.get("token"));
-  const to = new URL("/account", url);
+  const to = publicUrl("/account", request);
   if (customer) {
     to.searchParams.set("verified", "1");
     if (customer.linked) to.searchParams.set("linked", String(customer.linked));

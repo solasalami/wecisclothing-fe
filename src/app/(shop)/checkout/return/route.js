@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { confirmPayment } from "@/lib/payments";
 import { orderAccessToken } from "@/lib/orders";
+import { publicUrl } from "@/lib/site-url";
 
 export const dynamic = "force-dynamic";
 
@@ -10,7 +11,7 @@ export async function GET(request) {
   const url = new URL(request.url);
   const ref = url.searchParams.get("ref") || "";
   const { order } = await confirmPayment(ref);
-  if (!order) return NextResponse.redirect(new URL("/cart", url));
+  if (!order) return NextResponse.redirect(publicUrl("/cart", request));
   const t = orderAccessToken(order.order_number);
-  return NextResponse.redirect(new URL(`/checkout/success/${order.order_number}?t=${t}`, url));
+  return NextResponse.redirect(publicUrl(`/checkout/success/${order.order_number}?t=${t}`, request));
 }

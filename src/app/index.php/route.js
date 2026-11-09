@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { queryOne } from "@/lib/db";
+import { publicUrl } from "@/lib/site-url";
 
 // Old OpenCart links (/index.php?route=...) still live in Google results, WhatsApp
 // chats, social bios and past ads. Send each one to the matching page on the new
@@ -67,7 +68,7 @@ async function destination(sp) {
 
 export async function GET(request) {
   const url = new URL(request.url);
-  const to = new URL(await destination(url.searchParams), url);
+  const to = publicUrl(await destination(url.searchParams), request);
   // Keep ad and campaign tracking parameters.
   for (const [k, v] of url.searchParams) {
     if (/^(utm_|gclid$|gbraid$|wbraid$|fbclid$)/.test(k)) to.searchParams.set(k, v);

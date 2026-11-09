@@ -1,5 +1,6 @@
 import { DEFAULT_SETTINGS } from "@/lib/defaults";
 import { ping } from "@/lib/db";
+import { publicUrl } from "@/lib/site-url";
 
 export const dynamic = "force-dynamic";
 
@@ -17,7 +18,7 @@ export async function GET(request) {
   const from = safeFrom(new URL(request.url).searchParams.get("from"));
 
   // If the database is already back (e.g. a bookmarked or stale tab), go straight back.
-  if ((await ping()).ok) return Response.redirect(new URL(from, request.url), 307);
+  if ((await ping()).ok) return Response.redirect(publicUrl(from, request), 307);
 
   const { store } = DEFAULT_SETTINGS;
   const wa = `https://wa.me/${digits(store.whatsapp)}?text=${encodeURIComponent("Hello Wecis Clothing, I'd like to place an order.")}`;
