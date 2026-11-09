@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { hashPassword, checkPassword, startCustomerSession, endCustomerSession, getCustomer } from "@/lib/auth";
 import { sendVerificationEmail, saveAddress as saveAddr, deleteAddress as deleteAddr, setDefaultAddress } from "@/lib/customers";
 import { NG_STATES } from "@/lib/ng-states";
+import { createChallenge, checkHuman } from "@/lib/captcha";
 
 export async function loginCustomer(_prev, formData) {
   const email = String(formData.get("email") || "").trim().toLowerCase();
@@ -24,15 +25,35 @@ const registerSchema = z.object({
   password: z.string().min(8, "Password must be at least 8 characters").max(100),
 });
 
+/** Create-account action. Every reply carries a new spam-check question, since each works once. */
 export async function registerCustomer(_prev, formData) {
+  const challenge = await createChallenge("register");
+  // Typed values come back so the form can keep them (never the password).
+  const values = Object.fromEntries(["first_name", "last_name", "email", "phone"].map((k) => [k, String(formData.get(k) ?? "")]));
+  const fail = (error) => ({ error, challenge, values });
+
   const parsed = registerSchema.safeParse(Object.fromEntries(formData));
-  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  if (!parsed.success) return fail(parsed.error.issues[0].message);
   const d = parsed.data;
+
+  const human = await checkHuman("register", { token: formData.get("token"), answer: formData.get("answer"), website: formData.get("website") });
+  // Bots get a vague reply and no account, so they don't learn what tripped them.
+  if (human.error === "spam") return fail("We couldn't create your account. Please try again.");
+  if (human.error) return fail(human.error);
+
   const existing = await queryOne("SELECT id FROM customers WHERE email = ?", [d.email]);
-  if (existing) return { error: "An account with this email already exists. Please sign in." };
-  const res = await query("INSERT INTO customers (first_name, last_name, email, phone, password_hash) VALUES (?,?,?,?,?)", [
-    d.first_name, d.last_name, d.email, d.phone, await hashPassword(d.password),
-  ]);
+  if (existing) return fail("An account with this email already exists. Please sign in.");
+  let res;
+  try {
+    res = await query("INSERT INTO customers (first_name, last_name, email, phone, password_hash, signup_nonce) VALUES (?,?,?,?,?,?)", [
+      d.first_name, d.last_name, d.email, d.phone, await hashPassword(d.password), human.nonce,
+    ]);
+  } catch (err) {
+    if (err?.code !== "ER_DUP_ENTRY") throw err;
+    return /signup_nonce/.test(err.sqlMessage || "")
+      ? fail("This form was already used. Please answer the new question and try again.")
+      : fail("An account with this email already exists. Please sign in.");
+  }
   const id = res.insertId;
   // Earlier guest orders are attached once the customer confirms this email (see lib/customers.js).
   await sendVerificationEmail({ id, first_name: d.first_name, email: d.email });

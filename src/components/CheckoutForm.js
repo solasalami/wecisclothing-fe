@@ -12,12 +12,24 @@ import { trackBeginCheckout, trackAddShippingInfo, trackAddPaymentInfo, readAttr
 
 export default function CheckoutForm({ customer, addresses = [], shipping, showrooms, paymentMethods }) {
   const { lines, ready, syncPrices, clear } = useCart();
-  const defaultAddress = addresses.find((a) => a.is_default) || addresses[0];
   const methodFor = (a) => (a && a.state !== "Lagos" ? "delivery_nationwide" : "delivery_lagos");
-  const [method, setMethod] = useState(methodFor(defaultAddress));
-  const [addrId, setAddrId] = useState(defaultAddress?.id ?? "new"); // saved address id, or "new"
+  // Nothing is pre-selected: the shopper must choose delivery, address and payment themselves.
+  const [method, setMethod] = useState("");
+  const [addrId, setAddrId] = useState(null); // saved address id, "new", or null (not chosen yet)
   const savedAddress = addresses.find((a) => a.id === addrId);
-  const [payment, setPayment] = useState(paymentMethods[0]?.id || "");
+  const [payment, setPayment] = useState("");
+  // A section stays open until something is chosen, then collapses to that choice.
+  const [open, setOpen] = useState({ delivery: true, address: true, payment: true });
+  const toggle = (k, v) => setOpen((o) => ({ ...o, [k]: v ?? !o[k] }));
+  const [missing, setMissing] = useState(""); // section flagged after pressing Pay with it unchosen
+  // Close a section after a mouse/touch pick; keyboard users move with arrow keys, so it stays open.
+  const viaPointer = useRef(false);
+  const pointerProps = { onPointerDown: () => (viaPointer.current = true), onKeyDown: () => (viaPointer.current = false) };
+  const pick = (k, fn) => {
+    fn();
+    setMissing((m) => (m === k ? "" : m));
+    if (viaPointer.current) toggle(k, false);
+  };
   const [quote, setQuote] = useState(null);
   const [error, setError] = useState("");
   const [pending, startTransition] = useTransition();
@@ -36,6 +48,8 @@ export default function CheckoutForm({ customer, addresses = [], shipping, showr
       : []),
   ];
   const isDelivery = method.startsWith("delivery_");
+  const needsAddressChoice = isDelivery && addresses.length > 0;
+  const showNewAddress = isDelivery && (addresses.length === 0 || addrId === "new");
 
   // Authoritative server quote whenever cart or delivery method changes.
   useEffect(() => {
@@ -56,9 +70,18 @@ export default function CheckoutForm({ customer, addresses = [], shipping, showr
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, method, JSON.stringify(lines.map((l) => [l.key, l.quantity]))]);
 
+  const SECTION_IDS = { delivery: "delivery-options", address: "deliver-to", payment: "payment-options" };
+
   function onSubmit(e) {
     e.preventDefault();
     setError("");
+    const unchosen = !method ? "delivery" : needsAddressChoice && addrId == null ? "address" : paymentMethods.length > 0 && !payment ? "payment" : "";
+    if (unchosen) {
+      setMissing(unchosen);
+      toggle(unchosen, true);
+      document.getElementById(`${SECTION_IDS[unchosen]}-title`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
     const f = new FormData(e.currentTarget);
     const payload = {
       lines: lines.map(({ productId, size, quantity }) => ({ productId, size, quantity })),
@@ -120,11 +143,23 @@ export default function CheckoutForm({ customer, addresses = [], shipping, showr
         </section>
 
         <section>
-          <h2 className="mb-4 text-xl">Delivery</h2>
-          <div className="space-y-2">
+          <Choice
+            id="delivery-options"
+            title="Delivery"
+            selected={Boolean(method)}
+            open={open.delivery}
+            onToggle={() => toggle("delivery")}
+            canChange={deliveryOptions.length > 1}
+            error={missing === "delivery" && "Please choose how you'd like to receive your order."}
+            summary={(() => {
+              const o = deliveryOptions.find((d) => d.id === method);
+              return o && <Selected title={o.label} hint={o.hint} aside={o.fee ? formatNaira(o.fee) : "Free"} />;
+            })()}
+          >
+          <div className="space-y-2" {...pointerProps}>
             {deliveryOptions.map((o) => (
               <label key={o.id} className={`flex cursor-pointer items-start gap-3 border p-4 ${method === o.id ? "border-gold bg-gold-light/40" : "border-line"}`}>
-                <input type="radio" name="delivery_method" value={o.id} checked={method === o.id} onChange={() => setMethod(o.id)} className="mt-1" />
+                <input type="radio" name="delivery_method" value={o.id} checked={method === o.id} onChange={() => pick("delivery", () => setMethod(o.id))} className="mt-1" />
                 <span className="flex-1">
                   <span className="block font-medium">{o.label}</span>
                   {o.hint && <span className="block text-sm text-muted">{o.hint}</span>}
@@ -133,20 +168,38 @@ export default function CheckoutForm({ customer, addresses = [], shipping, showr
               </label>
             ))}
           </div>
+          </Choice>
           {shipping.freeThreshold > 0 && <p className="mt-2 text-xs text-muted">Free delivery on orders over {formatNaira(shipping.freeThreshold)}.</p>}
-          {isDelivery && addresses.length > 0 && (
-            <div className="mt-4 space-y-2">
-              <p className="label">Deliver to</p>
+          {needsAddressChoice && (
+            <Choice
+              id="deliver-to"
+              title="Deliver to"
+              small
+              selected={addrId != null}
+              error={missing === "address" && "Please choose a delivery address."}
+              open={open.address}
+              onToggle={() => toggle("address")}
+              summary={
+                savedAddress ? (
+                  <Selected title={savedAddress.label || "Saved address"} hint={`${savedAddress.address_line}, ${savedAddress.city}, ${savedAddress.state}`} small />
+                ) : addrId === "new" ? (
+                  <Selected title="A different address" hint="Enter it below." small />
+                ) : null
+              }
+            >
+            <div className="space-y-2" {...pointerProps}>
               {addresses.map((a) => (
                 <label key={a.id} className={`flex cursor-pointer items-start gap-3 border p-3 text-sm ${addrId === a.id ? "border-gold bg-gold-light/40" : "border-line"}`}>
                   <input
                     type="radio"
                     name="saved_address"
                     checked={addrId === a.id}
-                    onChange={() => {
-                      setAddrId(a.id);
-                      setMethod(methodFor(a));
-                    }}
+                    onChange={() =>
+                      pick("address", () => {
+                        setAddrId(a.id);
+                        setMethod(methodFor(a));
+                      })
+                    }
                     className="mt-1"
                   />
                   <span>
@@ -156,12 +209,13 @@ export default function CheckoutForm({ customer, addresses = [], shipping, showr
                 </label>
               ))}
               <label className={`flex cursor-pointer items-center gap-3 border p-3 text-sm ${addrId === "new" ? "border-gold bg-gold-light/40" : "border-line"}`}>
-                <input type="radio" name="saved_address" checked={addrId === "new"} onChange={() => setAddrId("new")} />
+                <input type="radio" name="saved_address" checked={addrId === "new"} onChange={() => pick("address", () => setAddrId("new"))} />
                 <span className="font-medium">Use a different address</span>
               </label>
             </div>
+            </Choice>
           )}
-          {isDelivery && !savedAddress && (
+          {showNewAddress && (
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
               <div className="sm:col-span-2">
                 <Field label="Street address" name="address_line" autoComplete="street-address" required />
@@ -188,14 +242,29 @@ export default function CheckoutForm({ customer, addresses = [], shipping, showr
         </section>
 
         <section>
-          <h2 className="mb-4 text-xl">Payment</h2>
           {paymentMethods.length === 0 ? (
-            <p className="border border-line bg-soft p-4 text-sm">Online payment is being set up. Please contact us on WhatsApp to complete your order.</p>
+            <>
+              <h2 className="mb-4 text-xl">Payment</h2>
+              <p className="border border-line bg-soft p-4 text-sm">Online payment is being set up. Please contact us on WhatsApp to complete your order.</p>
+            </>
           ) : (
-            <div className="space-y-2">
+            <Choice
+              id="payment-options"
+              title="Payment"
+              selected={Boolean(payment)}
+              open={open.payment}
+              onToggle={() => toggle("payment")}
+              canChange={paymentMethods.length > 1}
+              error={missing === "payment" && "Please choose how you'd like to pay."}
+              summary={(() => {
+                const m = paymentMethods.find((x) => x.id === payment);
+                return m && <Selected title={m.label} hint={m.hint} />;
+              })()}
+            >
+            <div className="space-y-2" {...pointerProps}>
               {paymentMethods.map((m) => (
                 <label key={m.id} className={`flex cursor-pointer items-start gap-3 border p-4 ${payment === m.id ? "border-gold bg-gold-light/40" : "border-line"}`}>
-                  <input type="radio" name="payment" value={m.id} checked={payment === m.id} onChange={() => setPayment(m.id)} className="mt-1" />
+                  <input type="radio" name="payment" value={m.id} checked={payment === m.id} onChange={() => pick("payment", () => setPayment(m.id))} className="mt-1" />
                   <span>
                     <span className="block font-medium">{m.label}</span>
                     <span className="block text-sm text-muted">{m.hint}</span>
@@ -203,6 +272,7 @@ export default function CheckoutForm({ customer, addresses = [], shipping, showr
                 </label>
               ))}
             </div>
+            </Choice>
           )}
         </section>
       </div>
@@ -225,10 +295,10 @@ export default function CheckoutForm({ customer, addresses = [], shipping, showr
             </li>
           ))}
         </ul>
-        <OrderTotals o={quote} className="mt-6 border-t border-line pt-4" />
+        <OrderTotals o={quote} deliveryPending={!method} className="mt-6 border-t border-line pt-4" />
         {quote?.problems?.length > 0 && <p className="mt-4 text-sm text-red-600">{quote.problems[0]}</p>}
         {error && <p className="mt-4 text-sm text-red-600" role="alert">{error}</p>}
-        <button type="submit" disabled={pending || !quote || !payment || quote.problems.length > 0} className="btn-primary mt-6 w-full">
+        <button type="submit" disabled={pending || !quote || quote.problems.length > 0} className="btn-primary mt-6 w-full">
           {pending ? "Processing…" : payment && payment !== "bank_transfer" ? `Pay ${formatNaira(quote?.total ?? 0)}` : "Place order"}
         </button>
         <p className="mt-3 text-center text-xs text-muted">
@@ -247,6 +317,56 @@ function vatNote(quote, line) {
   if (!item) return null;
   const label = quote.vat_label || "VAT";
   return <p className="text-xs text-muted">{item.vat_inclusive ? `${label} inclusive` : `+ ${label}`}</p>;
+}
+
+/**
+ * A choice section that collapses to its current selection. The options stay in the DOM
+ * while hidden (state drives the order payload, but this keeps the radios consistent).
+ */
+function Choice({ id, title, small = false, selected, open, onToggle, canChange = true, error, summary, children }) {
+  // Nothing chosen yet: always open. Otherwise open/closed as toggled (one-option sections stay closed).
+  const expanded = !selected || (open && canChange);
+  const collapsible = selected && canChange;
+  return (
+    <div className={small ? "mt-4" : ""}>
+      <div className={`flex items-baseline justify-between gap-4 ${small ? "mb-2" : "mb-4"}`}>
+        {small ? <p id={`${id}-title`} className="label !mb-0">{title}</p> : <h2 id={`${id}-title`} className="text-xl">{title}</h2>}
+        {collapsible && (
+          <button type="button" onClick={onToggle} aria-expanded={expanded} aria-controls={id} className="text-sm underline">
+            {expanded ? "Done" : "Change"}
+          </button>
+        )}
+      </div>
+      {error && <p className={`${small ? "mb-2" : "mb-3"} text-sm text-red-600`} role="alert">{error}</p>}
+      {!expanded &&
+        (collapsible ? (
+          <button type="button" onClick={onToggle} aria-expanded={false} aria-controls={id} aria-label={`Change ${title.toLowerCase()}`} className="block w-full text-left">
+            {summary}
+          </button>
+        ) : (
+          summary
+        ))}
+      <div id={id} role="group" aria-labelledby={`${id}-title`} hidden={!expanded}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+/** The selected option, shown when its section is collapsed. */
+function Selected({ title, hint, aside, small = false }) {
+  return (
+    <span className={`flex items-start gap-3 border border-gold bg-gold-light/40 ${small ? "p-3 text-sm" : "p-4"}`}>
+      <span aria-hidden="true" className="mt-1 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-ink">
+        <span className="h-2 w-2 rounded-full bg-ink" />
+      </span>
+      <span className="flex-1">
+        <span className="block font-medium">{title}</span>
+        {hint && <span className="block text-sm text-muted">{hint}</span>}
+      </span>
+      {aside && <span className="text-sm">{aside}</span>}
+    </span>
+  );
 }
 
 function Field({ label, name, type = "text", ...rest }) {

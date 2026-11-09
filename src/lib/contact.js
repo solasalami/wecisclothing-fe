@@ -1,52 +1,22 @@
 import "server-only";
-import crypto from "node:crypto";
 import { query, queryOne } from "./db";
-import { signToken, verifyToken } from "./auth";
+import { createChallenge as createCaptcha, checkHuman as checkCaptcha } from "./captcha";
 import { sendMail } from "./email";
 import { esc, contactReplyEmail } from "./email-templates";
 
-// Contact form protection, all self-hosted (no third-party captcha or keys):
-//  1. a short arithmetic question; the answer is never sent to the browser, only a
-//     signed hash of it, so it can't be read from the page or forged;
-//  2. a hidden "website" field that people never see but form-filling bots do;
-//  3. timing: a person needs more than a few seconds, and stale pages expire;
-//  4. each question works once (nonce stored with the message);
-//  5. at most RATE_LIMIT messages per hour from one connection, and few links.
-// This stops ordinary spam bots. A determined AI browser agent can still solve a
-// sum; if that becomes a problem, add Cloudflare Turnstile (free) on top.
+// Contact form protection: the shared spam check in ./captcha.js (question, honeypot,
+// timing; each question works once because its nonce is stored UNIQUE with the message),
+// plus at most RATE_LIMIT messages per hour from one connection, and few links.
 
 export const TOPICS = ["Order enquiry", "Custom / made-to-measure", "Sizing help", "Delivery or returns", "Festive packages", "Something else"];
-const MIN_SECONDS = 3;
-const MAX_AGE = 2 * 60 * 60; // 2 hours
 const RATE_LIMIT = 5;
 const MAX_LINKS = 2;
 
-const hashAnswer = (nonce, answer) =>
-  crypto.createHash("sha256").update(`contact:${nonce}:${String(answer).trim()}:${process.env.AUTH_SECRET || ""}`).digest("hex");
-
-/** A fresh question for the form: { question, token }. */
-export async function createChallenge() {
-  const plus = crypto.randomInt(0, 2) === 1;
-  let a = crypto.randomInt(2, 10);
-  let b = crypto.randomInt(1, 10);
-  if (!plus && b > a) [a, b] = [b, a];
-  const answer = plus ? a + b : a - b;
-  const nonce = crypto.randomBytes(16).toString("hex");
-  const token = await signToken({ kind: "contact", n: nonce, h: hashAnswer(nonce, answer) }, MAX_AGE);
-  return { question: `What is ${a} ${plus ? "+" : "−"} ${b}?`, token };
-}
+/** A fresh question for the contact form: { question, token }. */
+export const createChallenge = () => createCaptcha("contact");
 
 /** Checks the captcha, honeypot and timing. Returns { nonce } or { error }. */
-export async function checkHuman({ token, answer, website }) {
-  if (website) return { error: "spam" }; // hidden field filled in: a bot
-  const payload = await verifyToken(token);
-  if (payload?.kind !== "contact") return { error: "This form has expired. Please answer the new question and send again." };
-  const age = Date.now() / 1000 - (payload.iat || 0);
-  if (age < MIN_SECONDS) return { error: "spam" };
-  const given = String(answer ?? "").replace(/[^\d-]/g, "");
-  if (!given || hashAnswer(payload.n, given) !== payload.h) return { error: "That answer isn't right. Please try the new question." };
-  return { nonce: payload.n };
-}
+export const checkHuman = (input) => checkCaptcha("contact", input);
 
 export function countLinks(text) {
   return (String(text).match(/https?:\/\/|www\./gi) || []).length;

@@ -69,6 +69,7 @@ CREATE TABLE IF NOT EXISTS customers (
   phone VARCHAR(40) NULL,
   password_hash VARCHAR(255) NULL,
   email_verified_at DATETIME NULL,          -- set when the customer clicks the confirmation link; earlier guest orders are linked then
+  signup_nonce CHAR(32) NULL UNIQUE,        -- register-form spam check: each question creates one account
   is_active TINYINT(1) NOT NULL DEFAULT 1,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
