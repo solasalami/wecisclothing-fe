@@ -1,6 +1,7 @@
 import { requireOwner } from "@/lib/auth";
 import { getSettings } from "@/lib/settings";
 import { opayConfigured } from "@/lib/opay";
+import { paystackConfigured, paystackMode } from "@/lib/paystack";
 import { ActionForm, SubmitButton } from "@/components/admin/Form";
 import { Field, TextArea, Check, Card, PageHeader } from "@/components/admin/Fields";
 import { saveSettings } from "@/app/admin/actions";
@@ -49,6 +50,12 @@ export default async function SettingsAdmin() {
           </div>
         </Card>
         <Card title="Payments">
+          <Check
+            label="Paystack online payments"
+            name="paystack_enabled"
+            defaultChecked={payments.paystack_enabled}
+            hint={paystackConfigured() ? `Paystack keys detected (${paystackMode()} mode).` : "Paystack keys are not configured yet. Set PAYSTACK_SECRET_KEY and PAYSTACK_PUBLIC_KEY in Netlify."}
+          />
           <Check
             label="OPay online payments"
             name="opay_enabled"

@@ -6,6 +6,7 @@ The live version of this checklist is in **Admin, Go-live checklist** (/admin/go
 
 | Area | Check |
 |---|---|
+| Payments | Paystack keys visible to the running site (`PAYSTACK_SECRET_KEY`, scope "Functions"), live mode (`sk_live_` key), and **Paystack webhook received** at `/api/payments/paystack/webhook` (warns on an invalid signature). Shown only while Paystack is switched on in Settings |
 | Payments | OPay keys visible to the running site (`OPAY_MERCHANT_ID`, `OPAY_PUBLIC_KEY`, `OPAY_SECRET_KEY`, scope "Functions") |
 | Payments | OPay in live mode (`OPAY_ENV=production`) |
 | Payments | **OPay webhook received**: the site records every genuine notification to `/api/payments/opay/callback` and warns if one arrives with an invalid signature (wrong `OPAY_SECRET_KEY`) |
@@ -24,6 +25,9 @@ The live version of this checklist is in **Admin, Go-live checklist** (/admin/go
 ## Manual steps (tick off in Admin, Go-live checklist)
 
 **Payments**
+- [ ] Set the Paystack webhook URL in the Paystack dashboard (Settings, API Keys & Webhooks): `https://<your-site>/api/payments/paystack/webhook`. Required: Paystack only notifies this address.
+- [ ] Switch to live Paystack keys (`PAYSTACK_SECRET_KEY=sk_live_...`, `PAYSTACK_PUBLIC_KEY=pk_live_...`), then redeploy.
+- [ ] Make one real low-value Paystack payment on the live site. Check that the order shows **Paid**, the emails arrive, and Netlify, Logs, Functions shows `POST /api/payments/paystack/webhook` with status 200. Refund it afterwards in the Paystack dashboard.
 - [ ] Set the OPay webhook URL in the OPay merchant dashboard: `https://<your-site>/api/payments/opay/callback`. The site also sends it with every payment; this is a backup.
 - [ ] Switch to live OPay keys and `OPAY_ENV=production`, then redeploy.
 - [ ] Make one real low-value payment on the live site. Check that the order shows **Paid**, the emails arrive, and Netlify, Logs, Functions shows `POST /api/payments/opay/callback` with status 200. Refund it afterwards.
@@ -57,7 +61,7 @@ The live version of this checklist is in **Admin, Go-live checklist** (/admin/go
 - [ ] Configure GA4 and the Google Ads purchase conversion in GTM and test in Preview mode (see `docs/TRACKING.md`).
 
 **Domain**
-- [ ] Point wecisclothing.com to Netlify with HTTPS, then update `NEXT_PUBLIC_SITE_URL` and the OPay webhook URL.
+- [ ] Point wecisclothing.com to Netlify with HTTPS, then update `NEXT_PUBLIC_SITE_URL` and the Paystack and OPay webhook URLs.
 
 ## Local only (not part of go-live)
 

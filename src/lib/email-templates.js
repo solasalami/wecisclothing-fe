@@ -11,7 +11,7 @@ export const esc = (s) =>
   String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 
 const abs = (siteUrl, url) => (!url ? "" : /^https?:\/\//.test(url) ? url : `${siteUrl}${url.startsWith("/") ? "" : "/"}${url}`);
-const PAYMENT_LABELS = { opay: "Paid online with OPay", bank_transfer: "Bank transfer", mock: "Test payment" };
+const PAYMENT_LABELS = { paystack: "Paid online with Paystack", opay: "Paid online with OPay", bank_transfer: "Bank transfer", mock: "Test payment" };
 
 function layout({ siteUrl, preheader, body, store, showrooms }) {
   const rooms = (showrooms || [])

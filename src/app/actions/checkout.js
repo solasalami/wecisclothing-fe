@@ -4,7 +4,7 @@ import { unstable_rethrow } from "next/navigation";
 import { getSettings } from "@/lib/settings";
 import { getCustomer } from "@/lib/auth";
 import { priceCart, shippingFee, orderTotal, createOrder, getOrderByNumber, orderAccessToken, checkOrderAccessToken, DELIVERY_METHODS } from "@/lib/orders";
-import { startOnlinePayment, onlinePaymentAvailable } from "@/lib/payments";
+import { startOnlinePayment, onlinePaymentAvailable, ONLINE_METHODS } from "@/lib/payments";
 import { verifiedCustomerByEmail, rememberAddress } from "@/lib/customers";
 
 const lineSchema = z.object({ productId: z.coerce.number().int().positive(), size: z.string().nullable().optional(), quantity: z.coerce.number().int().min(1).max(20) });
@@ -44,7 +44,7 @@ const checkoutSchema = z
       city: z.string().trim().max(100).optional().default(""),
       state: z.string().trim().max(100).optional().default(""),
     }),
-    paymentMethod: z.enum(["opay", "bank_transfer"]),
+    paymentMethod: z.enum([...ONLINE_METHODS, "bank_transfer"]),
     saveAddress: z.boolean().optional().default(false),
     utm: z.record(z.string(), z.any()).nullable().optional(),
   })
@@ -61,7 +61,10 @@ export async function placeOrder(input) {
 
   const settings = await getSettings();
   if (data.delivery.method.startsWith("pickup_") && !settings.shipping.pickup_enabled) return { ok: false, error: "Pickup is not available" };
-  if (data.paymentMethod === "opay" && (!settings.payments.opay_enabled || !onlinePaymentAvailable())) {
+  if (data.paymentMethod === "paystack" && (!settings.payments.paystack_enabled || !onlinePaymentAvailable("paystack"))) {
+    return { ok: false, error: "Paystack payment is not available right now. Please choose another method." };
+  }
+  if (data.paymentMethod === "opay" && (!settings.payments.opay_enabled || !onlinePaymentAvailable("opay"))) {
     return { ok: false, error: "Card / OPay payment is not available right now. Please choose another method." };
   }
   if (data.paymentMethod === "bank_transfer" && !settings.payments.bank_transfer_enabled) {
@@ -112,7 +115,7 @@ export async function placeOrder(input) {
 export async function retryPayment(orderNumber, token) {
   if (!checkOrderAccessToken(orderNumber, token)) return { ok: false, error: "Not allowed" };
   const order = await getOrderByNumber(orderNumber);
-  if (!order || order.payment_status === "paid" || order.payment_method !== "opay") return { ok: false, error: "This order cannot be paid online" };
+  if (!order || order.payment_status === "paid" || !ONLINE_METHODS.includes(order.payment_method)) return { ok: false, error: "This order cannot be paid online" };
   try {
     return { ok: true, redirect: await startOnlinePayment(order) };
   } catch (err) {

@@ -413,6 +413,7 @@ export async function saveSettings(_prev, fd) {
   });
   await saveSetting("payments", {
     ...payments,
+    paystack_enabled: !!bool(fd, "paystack_enabled"),
     opay_enabled: !!bool(fd, "opay_enabled"),
     bank_transfer_enabled: !!bool(fd, "bank_transfer_enabled"),
     bank_transfer_details: str(fd, "bank_transfer_details"),

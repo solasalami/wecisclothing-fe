@@ -20,6 +20,7 @@ export const DEFAULT_SETTINGS = {
     pickup_enabled: true,
   },
   payments: {
+    paystack_enabled: true,
     opay_enabled: true,
     bank_transfer_enabled: true,
     bank_transfer_details: "Bank: \nAccount name: Wecis Clothing\nAccount number: \nUse your order number as the payment reference.",

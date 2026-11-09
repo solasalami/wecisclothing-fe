@@ -6,7 +6,7 @@ import { orderAccessToken } from "@/lib/orders";
 
 export const metadata = { title: "Test payment", robots: { index: false } };
 
-// DEV ONLY: stands in for the OPay cashier page until real keys are configured.
+// DEV ONLY: stands in for the Paystack / OPay checkout page until real keys are configured.
 export default async function MockPayPage({ searchParams }) {
   if (!mockPaymentsEnabled()) notFound();
   const { ref } = await searchParams;
@@ -24,7 +24,7 @@ export default async function MockPayPage({ searchParams }) {
   return (
     <div className="mx-auto max-w-md px-4 py-20 text-center">
       <p className="text-xs font-bold uppercase tracking-widest text-red-600">Test mode: no real money</p>
-      <h1 className="mt-3 text-3xl">Simulated OPay checkout</h1>
+      <h1 className="mt-3 text-3xl">Simulated online checkout</h1>
       <p className="mt-4 text-lg">{formatNaira(payment.amount)}</p>
       <p className="text-sm text-muted">Reference {payment.reference}</p>
       <form action={complete} className="mt-8 flex flex-col gap-3">

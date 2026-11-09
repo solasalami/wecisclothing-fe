@@ -14,7 +14,8 @@ export default async function CheckoutPage() {
     ? (await getAddresses(customer.id)).map(({ id, label, address_line, city, state, phone, is_default }) => ({ id, label, address_line, city, state, phone, is_default }))
     : [];
   const methods = [];
-  if (payments.opay_enabled && onlinePaymentAvailable()) methods.push({ id: "opay", label: "Pay online with OPay", hint: "Card, bank transfer, USSD or OPay wallet, with secure checkout by OPay." });
+  if (payments.paystack_enabled && onlinePaymentAvailable("paystack")) methods.push({ id: "paystack", label: "Pay online with Paystack", hint: "Card, bank transfer, USSD or bank app, with secure checkout by Paystack." });
+  if (payments.opay_enabled && onlinePaymentAvailable("opay")) methods.push({ id: "opay", label: "Pay online with OPay", hint: "Card, bank transfer, USSD or OPay wallet, with secure checkout by OPay." });
   if (payments.bank_transfer_enabled) methods.push({ id: "bank_transfer", label: "Direct bank transfer", hint: "We'll show our account details after you place the order. Your order is confirmed once payment is received." });
 
   return (

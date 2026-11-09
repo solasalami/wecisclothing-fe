@@ -229,7 +229,7 @@ export default function CheckoutForm({ customer, addresses = [], shipping, showr
         {quote?.problems?.length > 0 && <p className="mt-4 text-sm text-red-600">{quote.problems[0]}</p>}
         {error && <p className="mt-4 text-sm text-red-600" role="alert">{error}</p>}
         <button type="submit" disabled={pending || !quote || !payment || quote.problems.length > 0} className="btn-primary mt-6 w-full">
-          {pending ? "Processing…" : payment === "opay" ? `Pay ${formatNaira(quote?.total ?? 0)}` : "Place order"}
+          {pending ? "Processing…" : payment && payment !== "bank_transfer" ? `Pay ${formatNaira(quote?.total ?? 0)}` : "Place order"}
         </button>
         <p className="mt-3 text-center text-xs text-muted">
           All prices in Nigerian Naira (NGN). See our{" "}

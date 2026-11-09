@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getOrderByNumber, checkOrderAccessToken, claimPurchaseTracking, DELIVERY_METHODS } from "@/lib/orders";
-import { confirmPayment } from "@/lib/payments";
+import { confirmPayment, ONLINE_METHODS, PROVIDER_NAMES } from "@/lib/payments";
 import { getCustomer } from "@/lib/auth";
 import { getSettings } from "@/lib/settings";
 import { formatNaira, whatsappLink, telLink } from "@/lib/format";
@@ -20,8 +20,9 @@ export default async function OrderSuccessPage({ params, searchParams }) {
   const allowed = checkOrderAccessToken(orderNumber, t) || (customer && customer.id === order.customer_id);
   if (!allowed) notFound();
 
-  // If the shopper returns before the callback lands, ask OPay directly.
-  if (order.payment_method === "opay" && order.payment_status === "pending" && order.payment_reference) {
+  // If the shopper returns before the webhook lands, ask the gateway directly.
+  const online = ONLINE_METHODS.includes(order.payment_method);
+  if (online && order.payment_status === "pending" && order.payment_reference) {
     await confirmPayment(order.payment_reference);
     order = await getOrderByNumber(orderNumber);
   }
@@ -75,10 +76,10 @@ export default async function OrderSuccessPage({ params, searchParams }) {
         </div>
       )}
 
-      {!paid && order.payment_method === "opay" && (
+      {!paid && online && (
         <div className="mt-6 space-y-4">
           {paymentFlag === "error" && <p className="text-red-600">We couldn&apos;t reach the payment gateway.</p>}
-          {order.payment_status === "pending" && <p className="text-muted">We&apos;re waiting for confirmation from OPay. Refresh this page in a moment.</p>}
+          {order.payment_status === "pending" && <p className="text-muted">We&apos;re waiting for confirmation from {PROVIDER_NAMES[order.payment_method]}. Refresh this page in a moment.</p>}
           <RetryPayment orderNumber={order.order_number} token={t} />
         </div>
       )}

@@ -2,6 +2,7 @@ import "server-only";
 import crypto from "node:crypto";
 import { query, queryOne, parseJson } from "./db";
 import { opayConfigured, opayMissingVars, opayMode } from "./opay";
+import { paystackConfigured, paystackMissingVars, paystackMode } from "./paystack";
 import { emailEnabled, emailMissingVars } from "./email";
 import { campaignStatus } from "./campaign";
 
@@ -17,13 +18,14 @@ async function readSetting(key) {
   return parseJson(row?.value, {}) || {};
 }
 
-/** Record OPay webhook activity (called by the callback route). Never throws. */
-export async function recordWebhook(kind, info = {}) {
+/** Record gateway webhook activity (called by the webhook routes). Never throws. */
+export async function recordWebhook(kind, info = {}, provider = "opay") {
+  const key = `${provider === "paystack" ? "paystack" : "opay"}_webhook`;
   try {
-    const current = await readSetting("opay_webhook");
+    const current = await readSetting(key);
     const at = new Date().toISOString();
     const next = kind === "valid" ? { ...current, last_valid_at: at, last_reference: info.reference, last_status: info.status } : { ...current, last_invalid_at: at };
-    await query("INSERT INTO settings (`key`, value) VALUES ('opay_webhook', ?) ON DUPLICATE KEY UPDATE value = VALUES(value)", [JSON.stringify(next)]);
+    await query("INSERT INTO settings (`key`, value) VALUES (?, ?) ON DUPLICATE KEY UPDATE value = VALUES(value)", [key, JSON.stringify(next)]);
   } catch {
     /* monitoring only */
   }
@@ -48,6 +50,9 @@ const fmt = (iso) =>
 export function manualSteps() {
   const site = siteUrl();
   return [
+    { id: "paystack-dashboard-webhook", group: "Payments", label: "Set the Paystack webhook URL in the Paystack dashboard", help: `Settings, API Keys & Webhooks, Live Webhook URL: ${site}/api/payments/paystack/webhook (required: Paystack only notifies this address).` },
+    { id: "paystack-live-keys", group: "Payments", label: "Switch to live Paystack keys", help: "In Netlify: PAYSTACK_SECRET_KEY=sk_live_... and PAYSTACK_PUBLIC_KEY=pk_live_..., then redeploy." },
+    { id: "paystack-live-test", group: "Payments", label: "Make one real low-value Paystack payment on the live site", help: "Check: order shows Paid, emails arrive, and Netlify logs show POST /api/payments/paystack/webhook 200. Refund it afterwards in the Paystack dashboard." },
     { id: "opay-dashboard-webhook", group: "Payments", label: "Set the OPay webhook URL in the OPay merchant dashboard", help: `${site}/api/payments/opay/callback (the site also sends this with every payment; this is a backup).` },
     { id: "opay-live-keys", group: "Payments", label: "Switch to live OPay keys", help: "In Netlify: live OPAY_MERCHANT_ID / OPAY_PUBLIC_KEY / OPAY_SECRET_KEY, OPAY_ENV=production, then redeploy." },
     { id: "opay-live-test", group: "Payments", label: "Make one real low-value payment on the live site", help: "Check: order shows Paid, emails arrive, and Netlify logs show POST /api/payments/opay/callback 200. Refund it afterwards." },
@@ -63,14 +68,15 @@ export function manualSteps() {
     { id: "email-dns", group: "Email", label: "Set SPF and DKIM for wecisclothing.com", help: "So order emails don't land in spam. cPanel, Email Deliverability." },
     { id: "email-test", group: "Email", label: "Send a real test confirmation", help: "Open a paid order, Resend confirmation email, and check the inbox and spam folder." },
     { id: "ga4-ads", group: "Tracking", label: "Configure GA4 and the Google Ads purchase conversion in GTM", help: "Follow docs/TRACKING.md and test in GTM Preview: one purchase per order, currency NGN." },
-    { id: "domain", group: "Domain", label: "Point wecisclothing.com to Netlify with HTTPS", help: "Then update NEXT_PUBLIC_SITE_URL and the OPay webhook URL to the new domain." },
+    { id: "domain", group: "Domain", label: "Point wecisclothing.com to Netlify with HTTPS", help: "Then update NEXT_PUBLIC_SITE_URL and the Paystack and OPay webhook URLs to the new domain." },
   ];
 }
 
 /** Automatic checks, evaluated live on every dashboard view. */
 export async function automaticChecks(settings) {
-  const [webhook, emailStatus, [counts]] = await Promise.all([
+  const [webhook, psWebhook, emailStatus, [counts]] = await Promise.all([
     readSetting("opay_webhook"),
+    readSetting("paystack_webhook"),
     readSetting("email_status"),
     query(`SELECT
         (SELECT COUNT(*) FROM products WHERE is_active = 1) AS live_products,
@@ -86,17 +92,47 @@ export async function automaticChecks(settings) {
   const status = campaignStatus(settings.campaign);
   const lastValid = webhook.last_valid_at ? new Date(webhook.last_valid_at) : null;
   const lastInvalid = webhook.last_invalid_at ? new Date(webhook.last_invalid_at) : null;
+  const psValid = psWebhook.last_valid_at ? new Date(psWebhook.last_valid_at) : null;
+  const psInvalid = psWebhook.last_invalid_at ? new Date(psWebhook.last_invalid_at) : null;
+  const { paystack_enabled, opay_enabled } = settings.payments;
+
+  // Checks for a gateway only appear while it's switched on in Settings, Payments.
+  const paystackChecks = !paystack_enabled ? [] : [
+    {
+      ok: paystackConfigured(),
+      label: paystackConfigured() ? `Paystack connected (${paystackMode()} mode)` : "Paystack keys configured",
+      help: `Not visible to the running site: ${paystackMissingVars().join(", ")}. In Netlify, Environment variables: add them with scope "Functions" (or All scopes), then redeploy.`,
+    },
+    {
+      ok: paystackMode() === "live",
+      label: "Paystack in live mode",
+      help: "Test keys (sk_test_): only test payments. Switch to sk_live_ keys when you're ready to take real payments.",
+    },
+    {
+      ok: Boolean(psValid) && !(psInvalid && psInvalid > psValid),
+      label: psValid ? `Paystack webhook received (last: ${fmt(psWebhook.last_valid_at)})` : "Paystack webhook received",
+      help:
+        psInvalid && (!psValid || psInvalid > psValid)
+          ? `A notification arrived on ${fmt(psWebhook.last_invalid_at)} with an invalid signature: check PAYSTACK_SECRET_KEY matches the dashboard (test vs live).`
+          : `None yet. Set ${site}/api/payments/paystack/webhook in the Paystack dashboard, then make a payment on the live site (Paystack can't reach localhost).`,
+    },
+  ];
 
   return [
     {
       group: "Payments",
       items: [
         {
-          ok: opayConfigured() && settings.payments.opay_enabled,
+          ok: Boolean(paystack_enabled || opay_enabled || settings.payments.bank_transfer_enabled),
+          label: "At least one payment method switched on",
+          help: "Switch on Paystack, OPay or bank transfer in Settings, Payments.",
+        },
+        ...paystackChecks,
+        ...(!opay_enabled ? [] : [
+        {
+          ok: opayConfigured(),
           label: opayConfigured() ? `OPay connected (${opayMode()} mode)` : "OPay keys configured",
-          help: !opayConfigured()
-            ? `Not visible to the running site: ${opayMissingVars().join(", ")}. In Netlify, Environment variables: add them with scope "Functions" (or All scopes), then redeploy.`
-            : "OPay is switched off in Settings, Payments, so checkout won't offer it.",
+          help: `Not visible to the running site: ${opayMissingVars().join(", ")}. In Netlify, Environment variables: add them with scope "Functions" (or All scopes), then redeploy.`,
         },
         {
           ok: opayMode() === "production",
@@ -111,6 +147,7 @@ export async function automaticChecks(settings) {
               ? `A notification arrived on ${fmt(webhook.last_invalid_at)} with an invalid signature: check OPAY_SECRET_KEY matches the keys in use.`
               : `None yet. Make a payment on the live site; OPay notifies ${site}/api/payments/opay/callback (it can't reach localhost).`,
         },
+        ]),
         { ok: env("PAYMENT_MOCK") !== "true", label: "Test payment page switched off", help: "Remove PAYMENT_MOCK from the environment variables." },
         {
           ok: !settings.payments.bank_transfer_enabled || /\d{10}/.test(bankDetails),
