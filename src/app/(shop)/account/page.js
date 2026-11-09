@@ -6,6 +6,7 @@ import { LoginForm } from "@/components/AuthForms";
 import { logoutCustomer } from "@/app/actions/account";
 import { getAddresses, linkGuestOrders, MAX_ADDRESSES } from "@/lib/customers";
 import AddressBook, { VerifyEmailNotice } from "@/components/AddressBook";
+import AccountPassword from "@/components/AccountPassword";
 
 export const metadata = { title: "My account", robots: { index: false } };
 
@@ -49,9 +50,13 @@ export default async function AccountPage({ searchParams }) {
         )}
         {sp.verified && (
           <p className="border border-green-200 bg-green-50 p-3 text-sm text-green-700">
-            Your email is confirmed.{" "}
-            {Number(sp.linked) > 0 ? `We found ${sp.linked} earlier ${Number(sp.linked) === 1 ? "order" : "orders"} and added them below.` : ""}
+            Your email is confirmed and you can now place orders.{" "}
+            {Number(sp.linked) > 0 ? `We found ${sp.linked} earlier ${Number(sp.linked) === 1 ? "order" : "orders"} and added them below. ` : ""}
+            <Link href="/checkout" className="font-semibold underline">Go to checkout</Link>
           </p>
+        )}
+        {sp.reset && (
+          <p className="border border-green-200 bg-green-50 p-3 text-sm text-green-700">Your new password is saved and you&apos;re signed in. Any other devices signed in to your account have been signed out.</p>
         )}
         {sp.verify === "invalid" && (
           <p className="border border-red-200 bg-red-50 p-3 text-sm text-red-700">That confirmation link has expired or is not valid. Send yourself a new one below.</p>
@@ -85,6 +90,8 @@ export default async function AccountPage({ searchParams }) {
       <div className="mt-12">
         <AddressBook addresses={addresses.map(({ created_at, updated_at, ...a }) => a)} max={MAX_ADDRESSES} />
       </div>
+
+      <AccountPassword email={customer.email} />
     </div>
   );
 }

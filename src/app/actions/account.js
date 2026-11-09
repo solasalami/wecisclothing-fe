@@ -4,14 +4,14 @@ import { redirect } from "next/navigation";
 import { query, queryOne } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { hashPassword, checkPassword, startCustomerSession, endCustomerSession, getCustomer } from "@/lib/auth";
-import { sendVerificationEmail, saveAddress as saveAddr, deleteAddress as deleteAddr, setDefaultAddress } from "@/lib/customers";
+import { sendVerificationEmail, sendPasswordResetEmail, resetPasswordWithToken, saveAddress as saveAddr, deleteAddress as deleteAddr, setDefaultAddress } from "@/lib/customers";
 import { NG_STATES } from "@/lib/ng-states";
 import { createChallenge, checkHuman } from "@/lib/captcha";
 
 export async function loginCustomer(_prev, formData) {
   const email = String(formData.get("email") || "").trim().toLowerCase();
   const password = String(formData.get("password") || "");
-  const c = await queryOne("SELECT id, password_hash FROM customers WHERE email = ? AND is_active = 1", [email]);
+  const c = await queryOne("SELECT id, password_hash, session_version FROM customers WHERE email = ? AND is_active = 1", [email]);
   if (!c || !(await checkPassword(password, c.password_hash))) return { error: "Incorrect email or password" };
   await startCustomerSession(c);
   redirect("/account");
@@ -70,6 +70,67 @@ async function requireCustomer() {
   const c = await getCustomer();
   if (!c) redirect("/account");
   return c;
+}
+
+// ---------- Passwords ----------
+
+const newPasswordSchema = z
+  .object({
+    password: z.string().min(8, "Your new password must be at least 8 characters").max(100, "That password is too long"),
+    confirm: z.string(),
+  })
+  .refine((d) => d.password === d.confirm, { message: "The two passwords don't match" });
+
+/** Forgot password form (signed out). The reply is the same whether or not the email has an account. */
+export async function requestPasswordReset(_prev, formData) {
+  const challenge = await createChallenge("reset");
+  const email = String(formData.get("email") || "").trim().toLowerCase();
+  const fail = (error) => ({ error, challenge, email });
+  if (!z.string().email().safeParse(email).success) return fail("Enter the email address you signed up with.");
+  const human = await checkHuman("reset", { token: formData.get("token"), answer: formData.get("answer"), website: formData.get("website") });
+  if (human.error && human.error !== "spam") return fail(human.error);
+  if (!human.error) {
+    const res = await sendPasswordResetEmail(email);
+    if (res.sent && !res.ok) return fail("We couldn't send the email right now. Please try again later or contact us on WhatsApp.");
+  }
+  return {
+    ok: `If there's an account for ${email}, we've sent it a link to reset your password. It works for 1 hour. Check your inbox and spam folder.`,
+    challenge,
+  };
+}
+
+/** Reset password page: sets the new password from the emailed link and signs the customer in. */
+export async function resetPassword(_prev, formData) {
+  const parsed = newPasswordSchema.safeParse({ password: formData.get("password"), confirm: formData.get("confirm") });
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  const customer = await resetPasswordWithToken(String(formData.get("token") || ""), parsed.data.password);
+  if (!customer) return { error: "This reset link has expired or was already used. Please ask for a new one.", expired: true };
+  await startCustomerSession(customer);
+  redirect("/account?reset=1");
+}
+
+/** Account page: change the password while signed in. */
+export async function changePassword(_prev, formData) {
+  const c = await requireCustomer();
+  const row = await queryOne("SELECT password_hash FROM customers WHERE id = ?", [c.id]);
+  if (!(await checkPassword(String(formData.get("current") || ""), row.password_hash))) {
+    return { error: "Your current password is incorrect. If you've forgotten it, email yourself a reset link below." };
+  }
+  const parsed = newPasswordSchema.safeParse({ password: formData.get("password"), confirm: formData.get("confirm") });
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  // New password and a new session version: other devices are signed out, this one stays in.
+  await query("UPDATE customers SET password_hash = ?, session_version = session_version + 1 WHERE id = ?", [await hashPassword(parsed.data.password), c.id]);
+  await startCustomerSession({ id: c.id, session_version: Number(c.session_version) + 1 });
+  return { ok: "Your password has been changed. Any other devices signed in to your account have been signed out.", savedAt: Date.now() };
+}
+
+/** Account page: email the signed-in customer a reset link (when they don't remember the current password). */
+export async function emailMyResetLink() {
+  const c = await requireCustomer();
+  const res = await sendPasswordResetEmail(c.email);
+  return res.ok
+    ? { ok: `We've sent a reset link to ${c.email}. It works for 1 hour.` }
+    : { error: "We couldn't send the email right now. Please try again later or contact us on WhatsApp." };
 }
 
 export async function resendVerification() {

@@ -1,8 +1,9 @@
 import "server-only";
+import crypto from "node:crypto";
 import { query, queryOne, transaction } from "./db";
-import { signToken, verifyToken } from "./auth";
+import { signToken, verifyToken, hashPassword } from "./auth";
 import { sendMail } from "./email";
-import { verifyEmailEmail } from "./email-templates";
+import { verifyEmailEmail, passwordResetEmail } from "./email-templates";
 import { getSetting } from "./settings";
 
 const VERIFY_TTL = 60 * 60 * 24 * 3; // 3 days
@@ -31,6 +32,12 @@ export async function verifiedCustomerByEmail(email) {
   return queryOne("SELECT id FROM customers WHERE email = ? AND email_verified_at IS NOT NULL AND is_active = 1", [String(email).trim().toLowerCase()]);
 }
 
+/** True when the email belongs to an account that hasn't confirmed its email yet. */
+export async function hasUnverifiedAccount(email) {
+  const row = await queryOne("SELECT id FROM customers WHERE email = ? AND email_verified_at IS NULL AND is_active = 1", [String(email).trim().toLowerCase()]);
+  return Boolean(row);
+}
+
 export async function verificationUrl(customer) {
   const token = await signToken({ kind: "verify-email", sub: String(customer.id), email: customer.email }, VERIFY_TTL);
   return `${siteUrl()}/account/verify?token=${encodeURIComponent(token)}`;
@@ -45,6 +52,59 @@ export async function sendVerificationEmail(customer) {
     if (process.env.NODE_ENV !== "production") console.log("Verification link (dev):", url);
   }
   return res;
+}
+
+// ---------- Password reset ----------
+// The link holds a fingerprint of the current password hash, so it stops working as soon
+// as the password changes (single use) without needing a table of reset tokens.
+
+export const RESET_MINUTES = 60;
+const passwordFingerprint = (hash) => crypto.createHash("sha256").update(`reset:${hash}`).digest("hex").slice(0, 24);
+
+/** Emails a reset link if an active account has this email. Always resolves quietly. */
+export async function sendPasswordResetEmail(email) {
+  const customer = await queryOne(
+    "SELECT id, first_name, email, password_hash FROM customers WHERE email = ? AND is_active = 1",
+    [String(email).trim().toLowerCase()]
+  );
+  if (!customer) return { ok: true, sent: false };
+  const token = await signToken(
+    { kind: "reset-password", sub: String(customer.id), fp: passwordFingerprint(customer.password_hash) },
+    RESET_MINUTES * 60
+  );
+  const url = `${siteUrl()}/account/reset-password?token=${encodeURIComponent(token)}`;
+  const store = await getSetting("store");
+  const res = await sendMail({ to: customer.email, ...passwordResetEmail({ customer, url, store, siteUrl: siteUrl(), minutes: RESET_MINUTES }) });
+  if (!res.ok) {
+    console.error("Password reset email failed:", res.error);
+    if (process.env.NODE_ENV !== "production") console.log("Password reset link (dev):", url);
+  }
+  return { ok: res.ok, sent: true };
+}
+
+/** The account a reset link is for, or null if it is expired, used or not valid. */
+export async function customerFromResetToken(token) {
+  const payload = await verifyToken(token);
+  if (payload?.kind !== "reset-password") return null;
+  const customer = await queryOne(
+    "SELECT id, first_name, email, email_verified_at, password_hash, session_version FROM customers WHERE id = ? AND is_active = 1",
+    [payload.sub]
+  );
+  if (!customer || passwordFingerprint(customer.password_hash) !== payload.fp) return null;
+  return customer;
+}
+
+/** Sets a new password from a reset link. Returns the customer, or null if the link is no longer valid. */
+export async function resetPasswordWithToken(token, password) {
+  const customer = await customerFromResetToken(token);
+  if (!customer) return null;
+  // The link reached their inbox, which also proves they own the email. Raising
+  // session_version signs out every device (e.g. someone else who knew the old password).
+  await query(
+    "UPDATE customers SET password_hash = ?, email_verified_at = COALESCE(email_verified_at, UTC_TIMESTAMP()), session_version = session_version + 1 WHERE id = ?",
+    [await hashPassword(password), customer.id]
+  );
+  return { ...customer, session_version: Number(customer.session_version) + 1 };
 }
 
 /** Confirms the email in a verification token and links earlier guest orders. Returns the customer or null. */

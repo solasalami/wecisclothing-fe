@@ -1,6 +1,21 @@
 import Link from "next/link";
 import { telLink, whatsappLink } from "@/lib/format";
-import { PinIcon, PhoneIcon, MailIcon, WhatsAppIcon, ClockIcon } from "./icons";
+import { PinIcon, PhoneIcon, MailIcon, WhatsAppIcon, ClockIcon, InstagramIcon, FacebookIcon, TikTokIcon } from "./icons";
+
+const SOCIALS = [
+  { key: "instagram", label: "Instagram", Icon: InstagramIcon, base: "https://www.instagram.com/" },
+  { key: "facebook", label: "Facebook", Icon: FacebookIcon, base: "https://www.facebook.com/" },
+  { key: "tiktok", label: "TikTok", Icon: TikTokIcon, base: "https://www.tiktok.com/@" },
+];
+
+// Accepts a full link or just the handle ("wecisclothing" or "@wecisclothing") from Admin, Settings.
+function socialUrl(value, base) {
+  const v = (value || "").trim();
+  if (!v) return null;
+  if (/^https?:\/\//i.test(v)) return v;
+  if (/^(www\.)?[a-z0-9-]+\.[a-z]{2,}\//i.test(v)) return `https://${v}`;
+  return base + v.replace(/^@/, "");
+}
 
 export default function Footer({ store, showrooms, categories, pages, campaign }) {
   return (
@@ -41,6 +56,7 @@ export default function Footer({ store, showrooms, categories, pages, campaign }
         <div>
           <h3 className="mb-4 font-display text-xl text-white">{store.name}</h3>
           <p className="leading-relaxed">{store.tagline}. Est. 2015.</p>
+          <SocialLinks store={store} />
         </div>
         <div>
           <h4 className="mb-4 text-xs font-medium uppercase tracking-[0.2em] text-gold">Shop</h4>
@@ -95,9 +111,47 @@ export default function Footer({ store, showrooms, categories, pages, campaign }
           </ul>
         </div>
       </div>
-      <div className="border-t border-white/10 py-5 text-center text-xs text-white/50">
-        © {new Date().getFullYear()} {store.name}. All rights reserved. Prices in Nigerian Naira (₦).
+      <div className="border-t border-white/10">
+        <div className="mx-auto flex max-w-7xl flex-col items-center gap-2 px-4 py-5 text-center text-xs text-white/50 sm:flex-row sm:justify-between sm:text-left">
+          <p>© {new Date().getFullYear()} {store.name}. All rights reserved. Prices in Nigerian Naira (₦).</p>
+          <p>
+            Powered by{" "}
+            <a
+              href="https://thebytecodes.com.ng"
+              target="_blank"
+              rel="noopener"
+              className="font-medium text-white/70 underline decoration-white/30 underline-offset-2 transition hover:text-gold hover:decoration-gold"
+            >
+              TheByteCodes
+            </a>
+          </p>
+        </div>
       </div>
     </footer>
+  );
+}
+
+// Only the networks with a link set in Admin, Settings are shown.
+function SocialLinks({ store }) {
+  const links = SOCIALS.map((s) => ({ ...s, href: socialUrl(store[s.key], s.base) })).filter((s) => s.href);
+  if (!links.length) return null;
+  return (
+    <ul className="mt-5 flex gap-3" aria-label="Follow us">
+      {links.map(({ key, label, Icon, href }) => (
+        <li key={key}>
+          <a
+            href={href}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={`${store.name} on ${label}`}
+            title={label}
+            data-track-location={`footer_${key}`}
+            className="flex h-10 w-10 items-center justify-center rounded-full border border-white/25 text-white transition hover:border-gold hover:bg-gold hover:text-ink"
+          >
+            <Icon width={18} height={18} />
+          </a>
+        </li>
+      ))}
+    </ul>
   );
 }

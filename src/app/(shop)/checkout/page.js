@@ -4,11 +4,28 @@ import { getShowrooms } from "@/lib/catalog";
 import { onlinePaymentAvailable } from "@/lib/payments";
 import CheckoutForm from "@/components/CheckoutForm";
 import { getAddresses } from "@/lib/customers";
+import Link from "next/link";
+import { VerifyEmailNotice } from "@/components/AddressBook";
 
 export const metadata = { title: "Checkout", robots: { index: false } };
 
 export default async function CheckoutPage() {
   const [settings, customer, showrooms] = await Promise.all([getSettings(), getCustomer(), getShowrooms()]);
+  if (customer && !customer.email_verified_at) {
+    return (
+      <div className="mx-auto max-w-xl px-4 py-16">
+        <h1 className="text-3xl">Confirm your email to check out</h1>
+        <p className="mt-3 text-muted">Your bag is saved. As soon as your email is confirmed you can come back here and place your order.</p>
+        <div className="mt-6">
+          <VerifyEmailNotice email={customer.email} />
+        </div>
+        <div className="mt-8 flex flex-wrap gap-3">
+          <Link href="/account" className="btn-outline">My account</Link>
+          <Link href="/shop" className="btn-outline">Keep shopping</Link>
+        </div>
+      </div>
+    );
+  }
   const { shipping, payments } = settings;
   const addresses = customer
     ? (await getAddresses(customer.id)).map(({ id, label, address_line, city, state, phone, is_default }) => ({ id, label, address_line, city, state, phone, is_default }))

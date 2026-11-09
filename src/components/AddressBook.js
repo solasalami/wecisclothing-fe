@@ -92,14 +92,17 @@ function AddressForm({ address, onDone }) {
 }
 
 /** "Confirm your email" notice with a resend button. */
+/** Shown until the account's email is confirmed; ordering is blocked until then. */
 export function VerifyEmailNotice({ email }) {
   const [state, action] = useActionState(resendVerification, null);
   return (
-    <div className="border-l-4 border-gold bg-gold-light/40 p-4 text-sm">
+    <div className="border-l-4 border-gold bg-gold-light/40 p-4 text-sm" role="status">
       <p>
-        <strong>Confirm your email to see all your orders.</strong> We sent a link to {email}. Once you confirm it, any orders
-        you placed with this email before signing up will appear here.
+        <strong>Confirm your email before you place an order.</strong> We sent a confirmation link to <strong>{email}</strong>.
+        Open it to activate ordering on your account. Until then you can browse and fill your bag, but you can&apos;t check out.
+        Once confirmed, any orders you placed with this email before signing up will also appear in your account.
       </p>
+      <p className="mt-2 text-muted">Can&apos;t find it? Check your spam or promotions folder, or send a new link.</p>
       <form action={action} className="mt-2">
         <ResendButton />
       </form>

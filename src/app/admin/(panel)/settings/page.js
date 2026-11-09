@@ -25,10 +25,11 @@ export default async function SettingsAdmin() {
           <Field label="Tagline" name="tagline" defaultValue={store.tagline} />
           <Field label="Default WhatsApp message" name="whatsapp_message" defaultValue={store.whatsapp_message} />
           <div className="grid gap-4 sm:grid-cols-3">
-            <Field label="Instagram URL" name="instagram" defaultValue={store.instagram} />
-            <Field label="Facebook URL" name="facebook" defaultValue={store.facebook} />
-            <Field label="TikTok URL" name="tiktok" defaultValue={store.tiktok} />
+            <Field label="Instagram URL" name="instagram" defaultValue={store.instagram} placeholder="https://www.instagram.com/wecisclothing" />
+            <Field label="Facebook URL" name="facebook" defaultValue={store.facebook} placeholder="https://www.facebook.com/wecisclothing" />
+            <Field label="TikTok URL" name="tiktok" defaultValue={store.tiktok} placeholder="https://www.tiktok.com/@wecisclothing" />
           </div>
+          <p className="-mt-2 text-xs text-muted">Shown as icons in the shop footer. Paste the full link or just the handle; leave blank to hide that icon.</p>
         </Card>
         <Card title="Delivery fees (₦)">
           <div className="grid gap-4 sm:grid-cols-3">

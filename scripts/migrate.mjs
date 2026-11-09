@@ -21,6 +21,7 @@ const columns = [
   ["order_items", "vat_amount", "DECIMAL(12,2) NOT NULL DEFAULT 0 AFTER vat_inclusive"],
   ["customers", "email_verified_at", "DATETIME NULL AFTER password_hash"],
   ["customers", "signup_nonce", "CHAR(32) NULL UNIQUE AFTER email_verified_at"],
+  ["customers", "session_version", "INT UNSIGNED NOT NULL DEFAULT 0 AFTER signup_nonce"],
 ];
 for (const [table, column, definition] of columns) {
   const [rows] = await conn.query(

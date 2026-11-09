@@ -78,7 +78,8 @@ export async function requireOwner() {
 
 // ---------- Customer ----------
 export async function startCustomerSession(customer) {
-  await setSession(CUSTOMER_COOKIE, { sub: String(customer.id), kind: "customer" }, 60 * 60 * 24 * 30);
+  const v = Number(customer.session_version || 0);
+  await setSession(CUSTOMER_COOKIE, { sub: String(customer.id), kind: "customer", v }, 60 * 60 * 24 * 30);
 }
 
 export async function endCustomerSession() {
@@ -88,8 +89,12 @@ export async function endCustomerSession() {
 export async function getCustomer() {
   const payload = await verifyToken((await cookies()).get(CUSTOMER_COOKIE)?.value);
   if (payload?.kind !== "customer") return null;
-  return queryOne(
-    "SELECT id, first_name, last_name, email, phone, email_verified_at, created_at FROM customers WHERE id = ? AND is_active = 1",
+  const customer = await queryOne(
+    "SELECT id, first_name, last_name, email, phone, email_verified_at, session_version, created_at FROM customers WHERE id = ? AND is_active = 1",
     [payload.sub]
   );
+  // A password change or reset raises session_version, which signs out every older session.
+  // Sessions from before this check have no "v" and count as version 0.
+  if (!customer || Number(payload.v || 0) !== Number(customer.session_version)) return null;
+  return customer;
 }

@@ -5,7 +5,7 @@ import { getSettings } from "@/lib/settings";
 import { getCustomer } from "@/lib/auth";
 import { priceCart, shippingFee, orderTotal, createOrder, getOrderByNumber, orderAccessToken, checkOrderAccessToken, DELIVERY_METHODS } from "@/lib/orders";
 import { startOnlinePayment, onlinePaymentAvailable, ONLINE_METHODS } from "@/lib/payments";
-import { verifiedCustomerByEmail, rememberAddress } from "@/lib/customers";
+import { verifiedCustomerByEmail, hasUnverifiedAccount, rememberAddress } from "@/lib/customers";
 
 const lineSchema = z.object({ productId: z.coerce.number().int().positive(), size: z.string().nullable().optional(), quantity: z.coerce.number().int().min(1).max(20) });
 
@@ -59,6 +59,16 @@ export async function placeOrder(input) {
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message || "Please check your details" };
   const data = parsed.data;
 
+  // Accounts must confirm their email before ordering. This also covers checking out
+  // signed out with the email of an account that is still unconfirmed.
+  const signedInCustomer = await getCustomer();
+  if (signedInCustomer && !signedInCustomer.email_verified_at) {
+    return { ok: false, error: "Please confirm your email before placing an order. Go to My account to send yourself a new confirmation link." };
+  }
+  if (!signedInCustomer && (await hasUnverifiedAccount(data.contact.email))) {
+    return { ok: false, error: "This email belongs to a Wecis account that hasn't been confirmed yet. Sign in and confirm your email first, or use a different email." };
+  }
+
   const settings = await getSettings();
   if (data.delivery.method.startsWith("pickup_") && !settings.shipping.pickup_enabled) return { ok: false, error: "Pickup is not available" };
   if (data.paymentMethod === "paystack" && (!settings.payments.paystack_enabled || !onlinePaymentAvailable("paystack"))) {
@@ -78,7 +88,7 @@ export async function placeOrder(input) {
   const fee = shippingFee(data.delivery.method, priced.subtotal, settings.shipping);
   // Signed in: the order belongs to the account. Signed out but the email has a
   // confirmed account: attach it too, so it shows up when they sign in.
-  const customer = (await getCustomer()) || (await verifiedCustomerByEmail(data.contact.email));
+  const customer = signedInCustomer || (await verifiedCustomerByEmail(data.contact.email));
   const signedIn = customer && "first_name" in customer;
   if (signedIn && data.saveAddress && data.delivery.method.startsWith("delivery_")) {
     await rememberAddress(customer.id, data.delivery).catch((e) => console.error("Save address failed", e));

@@ -205,6 +205,31 @@ ${store.name}`;
   return { subject, html: layout({ siteUrl, preheader: "Confirm your email to see all your orders.", body, store, showrooms: [] }), text };
 }
 
+/** "Reset your password" link, from the Forgot password page or the account page. */
+export function passwordResetEmail({ customer, url, store, siteUrl, minutes }) {
+  const subject = "Reset your Wecis Clothing password";
+  const body = `
+    <tr><td style="padding:32px 32px 8px;">
+      <h1 style="margin:0;font:400 28px/1.25 ${SERIF};color:${C.ink};">Hello ${esc(customer.first_name)},</h1>
+      <p style="margin:14px 0 0;font:15px/1.6 ${SANS};color:${C.ink};">We received a request to reset the password for your Wecis Clothing account (${esc(customer.email)}). Click the button below to choose a new one.</p>
+    </td></tr>
+    <tr><td align="center" style="padding:24px 32px 12px;">
+      <a href="${esc(url)}" style="display:inline-block;background:${C.gold};color:${C.ink};font:600 12px/1 ${SANS};letter-spacing:3px;text-transform:uppercase;text-decoration:none;padding:15px 28px;">Choose a new password</a>
+    </td></tr>
+    <tr><td style="padding:8px 32px 28px;">
+      <p style="margin:0;font:13px/1.6 ${SANS};color:${C.muted};">This link works once, for ${minutes} minutes. If you didn't ask to reset your password, you can ignore this email; your password stays the same.</p>
+    </td></tr>`;
+  const text = `Hello ${customer.first_name},
+
+We received a request to reset the password for your Wecis Clothing account (${customer.email}).
+
+Choose a new password: ${url}
+
+This link works once, for ${minutes} minutes. If you didn't ask to reset your password, you can ignore this email; your password stays the same.
+${store.name}`;
+  return { subject, html: layout({ siteUrl, preheader: "Choose a new password for your account.", body, store, showrooms: [] }), text };
+}
+
 /** A reply from Admin, Messages to someone who used the Contact us form. */
 export function contactReplyEmail({ message, reply, store, siteUrl }) {
   const subject = `Re: ${message.topic} (your message to ${store.name})`;
