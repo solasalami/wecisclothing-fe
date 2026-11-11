@@ -61,7 +61,7 @@ export const DEFAULT_SETTINGS = {
     home_image_alt: "",
     home_title: "", // blank = use the landing page title
     home_subtitle: "", // blank = use the landing page sub-heading
-    home_show_packages: true, // show published packages under the section
+    home_show_packages: true, // show featured packages under the section
     home_packages_cta: "Explore packages", // button under the homepage packages; blank = no button
     home_eyebrow: "Limited season collection",
     home_cta: "Explore festive packages",

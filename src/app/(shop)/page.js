@@ -15,7 +15,8 @@ export default async function HomePage() {
     getBanners("home_hero"),
     listProducts({ featured: true, limit: 12 }),
     listProducts({ sort: "newest", kind: "product", limit: 12 }),
-    listProducts({ kind: "package", limit: 4 }),
+    // Only packages ticked "Feature on homepage"; the campaign page lists every visible package.
+    listProducts({ kind: "package", featured: true, limit: 4 }),
     getCategoryTree(),
     getShowrooms(),
     getSettings(),

@@ -177,7 +177,8 @@ export default async function CampaignAdmin({ searchParams }) {
           </div>
           <Field label="Title" name="home_title" defaultValue={c.home_title} placeholder={c.title} hint="Blank = same as the landing page title." />
           <TextArea label="Sub-heading" name="home_subtitle" rows={2} defaultValue={c.home_subtitle} placeholder={c.subtitle} hint="Blank = same as the landing page sub-heading." />
-          <Check label="Show published packages under this section" name="home_show_packages" defaultChecked={c.home_show_packages} />
+          <Check label="Show featured packages under this section" name="home_show_packages" defaultChecked={c.home_show_packages} />
+          <p className="-mt-2 text-xs text-muted">Only packages with &quot;Feature on homepage&quot; ticked appear here (up to 4). Every visible package is always listed on the campaign page.</p>
           <Field
             label="Button under the packages"
             name="home_packages_cta"

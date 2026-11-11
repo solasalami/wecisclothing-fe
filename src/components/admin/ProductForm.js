@@ -42,8 +42,8 @@ export default function ProductForm({ product, categories, kind = "product", def
 
       <div className="space-y-6">
         <Card title="Publish">
-          <Check label="Visible on website" name="is_active" defaultChecked={p.is_active} />
-          <Check label="Feature on homepage" name="is_featured" defaultChecked={p.is_featured} />
+          <Check label="Visible on website" name="is_active" defaultChecked={p.is_active} hint="Listed in the shop, its categories and search (packages also on the campaign page)." />
+          <Check label="Feature on homepage" name="is_featured" defaultChecked={p.is_featured} hint="Also shown on the homepage (needs Visible on website)." />
           <Field label="Badge (optional)" name="badge" defaultValue={p.badge || ""} list="badge-suggestions" placeholder="e.g. New arrival" hint="Shown on the product photo. Blank = automatic “New arrival” for 45 days." />
           <datalist id="badge-suggestions">
             {["New arrival", "Bestseller", "Limited edition", "Back in stock", "Pre-order"].map((b) => <option key={b} value={b} />)}
