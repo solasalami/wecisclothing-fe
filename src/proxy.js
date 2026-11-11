@@ -16,6 +16,15 @@ export async function proxy(request) {
     return NextResponse.rewrite(url);
   }
 
+  // "?from=/some/path" belongs only to /maintenance (where to return after an outage). If it
+  // ever ends up on a normal page, drop it so it can't be carried into the next return path.
+  const from = request.nextUrl.searchParams.get("from");
+  if (from?.startsWith("/")) {
+    const url = request.nextUrl.clone();
+    url.searchParams.delete("from");
+    return NextResponse.redirect(url);
+  }
+
   if (pathname.startsWith("/admin") && pathname !== "/admin/login") {
     const token = request.cookies.get("wecis_admin")?.value;
     let ok = false;

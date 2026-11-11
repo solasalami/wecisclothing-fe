@@ -1,6 +1,4 @@
 import { DEFAULT_SETTINGS } from "@/lib/defaults";
-import { ping } from "@/lib/db";
-import { publicUrl } from "@/lib/site-url";
 
 export const dynamic = "force-dynamic";
 
@@ -17,8 +15,10 @@ function safeFrom(value) {
 export async function GET(request) {
   const from = safeFrom(new URL(request.url).searchParams.get("from"));
 
-  // If the database is already back (e.g. a bookmarked or stale tab), go straight back.
-  if ((await ping()).ok) return Response.redirect(publicUrl(from, request), 307);
+  // No server-side bounce back here, even if the database answers now: if the page that sent
+  // the visitor here still fails, page -> maintenance -> page would loop until the browser
+  // gives up with "too many redirects". The script below returns them after a health check,
+  // and backs off if the last return didn't stick.
 
   const { store } = DEFAULT_SETTINGS;
   const wa = `https://wa.me/${digits(store.whatsapp)}?text=${encodeURIComponent("Hello Wecis Clothing, I'd like to place an order.")}`;
@@ -76,10 +76,19 @@ export async function GET(request) {
 <script>
 (function(){
   var from = ${JSON.stringify(from)};
+  var KEY = 'wecisMaintenanceReturn';
+  function lastReturn(){ try { return Number(sessionStorage.getItem(KEY)) || 0; } catch(e){ return 0; } }
   function check(){
-    fetch('/api/health', {cache:'no-store'}).then(function(r){ if(r.ok) location.replace(from); }).catch(function(){});
+    fetch('/api/health', {cache:'no-store'}).then(function(r){
+      if(!r.ok) return;
+      try { sessionStorage.setItem(KEY, String(Date.now())); } catch(e){}
+      location.replace(from);
+    }).catch(function(){});
   }
-  setInterval(check, 20000);
+  // Quick first check (stale tab or bookmark), but wait longer if we were sent back here within
+  // the last minute, so a page that keeps failing can't bounce in a tight loop.
+  setTimeout(check, Date.now() - lastReturn() < 60000 ? 30000 : 2000);
+  setInterval(check, 30000);
 })();
 </script>
 </body>

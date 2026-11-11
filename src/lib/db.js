@@ -182,6 +182,10 @@ const CONNECTION_ERROR_CODES = new Set([
 
 /** True when the error means "can't reach / use the database" rather than a bad query. */
 export function isDatabaseUnavailable(err) {
+  // A query that connected fine but ran too long is a slow page, not an outage: the database
+  // answers health checks, so the maintenance page would bounce the visitor straight back to
+  // the same slow page ("too many redirects"). Let it fail as a normal error instead.
+  if (err?.code === "QUERY_TIMEOUT" && err.phase === "running query") return false;
   return Boolean(
     err &&
       (CONNECTION_ERROR_CODES.has(err.code) ||
@@ -227,8 +231,29 @@ async function currentPath() {
   }
 }
 
-async function handle(err) {
+// An attempt can't legitimately last much longer than the deadline. When it has, the
+// function was frozen mid-attempt: on Netlify (AWS Lambda) the process is paused as soon as
+// the response is sent, which catches background work such as the 5-minute cache refresh
+// (unstable_cache revalidates after responding). When the next request thaws it, its
+// timers fire at once with a huge elapsed time ("ETIMEDOUT ... after 48395ms").
+// That says nothing about the database now, so it must not open the circuit breaker
+// (which would push the current, healthy request to the maintenance page) or redirect.
+const FROZEN_MS = QUERY_TIMEOUT_MS + 3000;
+
+let lastFrozenLogged = 0;
+function staleAttempt(err, startedAt) {
+  if (Date.now() - startedAt < FROZEN_MS) return false;
+  if (Date.now() - lastFrozenLogged > 30_000) {
+    lastFrozenLogged = Date.now();
+    console.warn(`[db] Ignored a stale attempt from a paused function (${describe(err)}). Not an outage.`);
+  }
+  return true;
+}
+
+async function handle(err, startedAt = Date.now()) {
   if (!isDatabaseUnavailable(err)) throw err;
+  // Thrown as a plain error: a background cache refresh just keeps the cached data.
+  if (staleAttempt(err, startedAt)) throw err;
   logOutage(err);
   tripCircuit();
   // redirect() throws; inside pages, layouts and server actions Next turns it into a redirect.
@@ -253,11 +278,12 @@ async function withBusyRetry(fn) {
 }
 
 export async function query(sql, params = []) {
+  const startedAt = Date.now();
   try {
     assertCircuitClosed();
     return await withDeadline((state) => withBusyRetry(() => run(sql, params, state)));
   } catch (err) {
-    return handle(err);
+    return handle(err, startedAt);
   }
 }
 
@@ -267,12 +293,13 @@ export async function queryOne(sql, params = []) {
 }
 
 export async function transaction(fn) {
+  const startedAt = Date.now();
   let conn;
   try {
     assertCircuitClosed();
     conn = await withDeadline((state) => withBusyRetry(() => acquire(state)));
   } catch (err) {
-    return handle(err);
+    return handle(err, startedAt);
   }
   let broken = false;
   try {
@@ -285,7 +312,7 @@ export async function transaction(fn) {
   } catch (err) {
     broken = LOST_CODES.has(err?.code) || err?.fatal === true;
     await conn.rollback().catch(() => {});
-    if (isDatabaseUnavailable(err)) return handle(err);
+    if (isDatabaseUnavailable(err)) return handle(err, startedAt);
     throw err;
   } finally {
     done(conn, { broken });
