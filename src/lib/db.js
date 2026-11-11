@@ -1,5 +1,6 @@
 import "server-only";
 import mysql from "mysql2/promise";
+import { AsyncLocalStorage } from "node:async_hooks";
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { getDbConfig } from "./db-config.mjs";
@@ -250,10 +251,33 @@ function staleAttempt(err, startedAt) {
   return true;
 }
 
+// Set while running inside a cached function (src/lib/cache.js). There a failure must not
+// redirect: during the background refresh of the cache there is no visitor to redirect
+// (Next only logs "Error: NEXT_REDIRECT ... /maintenance?from=/"), and it must not open the
+// circuit breaker for the visitors who are being served fine from the cache.
+const cacheScope = new AsyncLocalStorage();
+export const runInCacheScope = (fn) => cacheScope.run(true, fn);
+
+let lastCachedLogged = 0;
+
 async function handle(err, startedAt = Date.now()) {
   if (!isDatabaseUnavailable(err)) throw err;
   // Thrown as a plain error: a background cache refresh just keeps the cached data.
   if (staleAttempt(err, startedAt)) throw err;
+  if (cacheScope.getStore()) {
+    if (Date.now() - lastCachedLogged > 30_000) {
+      lastCachedLogged = Date.now();
+      console.warn(`[db] Cached data refresh failed (${describe(err)}); keeping the cached copy.`);
+    }
+    // cached() in src/lib/cache.js turns this back into the maintenance redirect when a
+    // visitor's request was waiting on it (nothing cached yet).
+    throw Object.assign(new Error(`Database unavailable during cache refresh: ${describe(err)}`), { code: "DB_UNAVAILABLE_CACHED", dbError: err });
+  }
+  return outage(err);
+}
+
+/** Database outage on a visitor's request: log, pause queries briefly, show the maintenance page. */
+export async function outage(err) {
   logOutage(err);
   tripCircuit();
   // redirect() throws; inside pages, layouts and server actions Next turns it into a redirect.
