@@ -6,13 +6,14 @@ import ImageManager from "./ImageManager";
 import { saveProduct } from "@/app/admin/actions";
 import { CategoryPicker } from "./CategoryTree";
 
-export default function ProductForm({ product, categories, kind = "product", defaultBadge = "" }) {
+export default function ProductForm({ product, categories, kind = "product", defaultBadge = "", back = "" }) {
   const p = product || { kind, badge: defaultBadge, is_active: 1, sizes: kind === "package" ? [] : ["S", "M", "L", "XL", "XXL"], images: [], categoryIds: [], package_items: [] };
   const isPackage = (p.kind || kind) === "package";
   return (
     <ActionForm action={saveProduct} className="grid gap-6 xl:grid-cols-[1fr_340px]">
       <input type="hidden" name="id" value={p.id || ""} />
       <input type="hidden" name="kind" value={isPackage ? "package" : "product"} />
+      <input type="hidden" name="back" value={back} />
       <div className="space-y-6">
         <Card title="Details">
           <Field label={isPackage ? "Package name" : "Product name"} name="name" defaultValue={p.name} required placeholder={isPackage ? "e.g. Owambe Couple Package" : "e.g. Men Native - Burgundy"} />

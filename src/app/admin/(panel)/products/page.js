@@ -7,6 +7,7 @@ import { SortHeader, Pagination, KeepTableState, TableToolbar, DateRangeFields }
 const BASE = "/admin/products";
 import { PageHeader, Badge } from "@/components/admin/Fields";
 import { toggleProduct } from "@/app/admin/actions";
+import { editProductHref } from "@/lib/admin-back";
 
 export const metadata = { title: "Products" };
 
@@ -27,6 +28,9 @@ export default async function ProductsAdmin({ searchParams }) {
     tiebreak: "p.id DESC",
   });
   const sortProps = { basePath: BASE, sp, table };
+  // The list as it is now (search, filters, sort, page), for the editor's back link.
+  const listQs = new URLSearchParams(Object.entries(sp).filter(([, v]) => typeof v === "string" && v)).toString();
+  const listUrl = listQs ? `${BASE}?${listQs}` : BASE;
   const [{ total }] = await query(`SELECT COUNT(*) total FROM products p WHERE ${where.join(" AND ")}`, params);
   const products = await query(
     `SELECT p.id, p.name, p.kind, p.sku, p.price, p.is_active, p.is_featured, p.track_stock, p.stock_qty, p.created_at,
@@ -65,7 +69,7 @@ export default async function ProductsAdmin({ searchParams }) {
             {products.map((p) => (
               <tr key={p.id} className="border-b border-line">
                 <td className="p-3">
-                  <Link href={`/admin/products/${p.id}`} className="flex items-center gap-3">
+                  <Link href={editProductHref(p.id, listUrl)} className="flex items-center gap-3">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     {p.image ? <img src={p.image} alt="" className="h-14 w-11 object-cover" /> : <span className="h-14 w-11 bg-soft" />}
                     <span>

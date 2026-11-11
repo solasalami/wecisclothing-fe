@@ -125,7 +125,9 @@ export async function saveProduct(_prev, fd) {
     if (!stillUsed) await deleteFile(url).catch(() => {});
   }
   invalidateStore();
-  redirect(`/admin/products/${productId}?saved=1`);
+  // Keep the editor's "Back to ..." link pointing where the admin came from.
+  const back = String(fd.get("back") || "");
+  redirect(`/admin/products/${productId}?saved=1${back.startsWith("/admin/") ? `&back=${encodeURIComponent(back)}` : ""}`);
 }
 
 export async function deleteProduct(fd) {

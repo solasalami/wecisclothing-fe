@@ -1,5 +1,6 @@
 import ImageUpload from "@/components/admin/ImageUpload";
 import Link from "next/link";
+import { editProductHref } from "@/lib/admin-back";
 import { query } from "@/lib/db";
 import { getSetting } from "@/lib/settings";
 import { campaignStatus } from "@/lib/campaign";
@@ -33,7 +34,7 @@ export default async function CampaignAdmin({ searchParams }) {
     <div className="space-y-8">
       <PageHeader title="Seasonal campaign">
         <Link href={`/${c.slug}`} target="_blank" className="btn-outline">{status === "live" ? "View page" : "Preview page"}</Link>
-        <Link href="/admin/products/new?kind=package" className="btn-primary">+ New package</Link>
+        <Link href="/admin/products/new?kind=package&back=%2Fadmin%2Fcampaign" className="btn-primary">+ New package</Link>
       </PageHeader>
       {saved && <p className="border border-green-200 bg-green-50 p-3 text-sm text-green-700">Campaign saved.</p>}
 
@@ -58,17 +59,17 @@ export default async function CampaignAdmin({ searchParams }) {
           Unpublish last season’s packages before starting a new campaign.
         </p>
         {packages.length === 0 ? (
-          <p className="py-2 text-sm">No packages yet. <Link href="/admin/products/new?kind=package" className="underline">Create the first one</Link>.</p>
+          <p className="py-2 text-sm">No packages yet. <Link href="/admin/products/new?kind=package&back=%2Fadmin%2Fcampaign" className="underline">Create the first one</Link>.</p>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {packages.map((p) => (
               <div key={p.id} className="border border-line">
-                <Link href={`/admin/products/${p.id}`}>
+                <Link href={editProductHref(p.id, "/admin/campaign")}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   {p.image ? <img src={p.image} alt="" className="aspect-[4/5] w-full object-cover" /> : <div className="flex aspect-[4/5] items-center justify-center bg-soft text-xs text-muted">No photo</div>}
                 </Link>
                 <div className="space-y-1 p-3 text-sm">
-                  <Link href={`/admin/products/${p.id}`} className="font-medium underline">{p.name}</Link>
+                  <Link href={editProductHref(p.id, "/admin/campaign")} className="font-medium underline">{p.name}</Link>
                   <p>{formatNaira(p.price)}</p>
                   <div className="flex items-center justify-between">
                     {p.is_active ? <Badge tone="green">Published</Badge> : <Badge>Hidden</Badge>}
