@@ -1,6 +1,7 @@
 "use client";
 import { createContext, useCallback, useContext, useMemo, useState, useSyncExternalStore } from "react";
 import { trackAddToCart, trackRemoveFromCart } from "@/lib/analytics";
+import { lineKey } from "@/lib/bundle-format";
 
 const CartContext = createContext(null);
 const KEY = "wecis_cart_v1";
@@ -41,9 +42,11 @@ export function CartProvider({ children }) {
   const ready = useSyncExternalStore(subscribe, () => true, () => false);
   const [drawerOpen, setDrawerOpen] = useState(false);
 
-  const add = useCallback((product, { quantity = 1, size = null } = {}) => {
+  // parts/partsLabel: bundle packages only, the size chosen for each included product
+  // ({ [productId]: size|null }) and [{ name, size }] to show in the bag.
+  const add = useCallback((product, { quantity = 1, size = null, parts = null, partsLabel = null } = {}) => {
     setLines((prev) => {
-      const key = `${product.id}:${size || ""}`;
+      const key = lineKey(product.id, size, parts);
       const existing = prev.find((l) => l.key === key);
       if (existing) return prev.map((l) => (l.key === key ? { ...l, quantity: Math.min(l.quantity + quantity, 20) } : l));
       return [
@@ -58,6 +61,7 @@ export function CartProvider({ children }) {
           price: Number(product.price),
           image: product.image,
           size,
+          ...(parts ? { parts, partsLabel } : {}),
           quantity,
         },
       ];
@@ -82,7 +86,7 @@ export function CartProvider({ children }) {
 
   /** Replace local prices with the server's authoritative prices. */
   const syncPrices = useCallback((items) => {
-    const priceMap = new Map(items.map((i) => [`${i.product_id}:${i.size || ""}`, i.unit_price]));
+    const priceMap = new Map(items.map((i) => [i.key || lineKey(i.product_id, i.size), i.unit_price]));
     setLines((prev) => prev.map((l) => (priceMap.has(l.key) ? { ...l, price: priceMap.get(l.key) } : l)));
   }, []);
 

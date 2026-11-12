@@ -1,5 +1,6 @@
 // Email-client-safe HTML (tables + inline styles) for order emails. No em dashes (house style).
 import { formatNaira, formatDate, whatsappLink, telLink } from "./format";
+import { componentsText } from "./bundle-format";
 import { DELIVERY_METHODS } from "./orders";
 import { vatRows } from "./vat";
 
@@ -52,7 +53,9 @@ function itemsTable(order, siteUrl) {
         i.image ? `<img src="${esc(abs(siteUrl, i.image))}" width="56" height="70" alt="" style="display:block;width:56px;height:70px;object-fit:cover;border:0;">` : ""
       }</td>
   <td valign="top" style="padding:12px 0;border-bottom:1px solid ${C.line};font:14px/1.5 ${SANS};color:${C.ink};">
-    ${esc(i.name)}<br><span style="color:${C.muted};font-size:13px;">${i.size ? `Size: ${esc(i.size)} &middot; ` : ""}Qty: ${i.quantity} &middot; ${esc(formatNaira(i.unit_price))} each${
+    ${esc(i.name)}${
+      i.components?.length ? `<br><span style="color:${C.muted};font-size:13px;">Includes: ${esc(componentsText(i.components))}</span>` : ""
+    }<br><span style="color:${C.muted};font-size:13px;">${i.size ? `Size: ${esc(i.size)} &middot; ` : ""}Qty: ${i.quantity} &middot; ${esc(formatNaira(i.unit_price))} each${
       Number(i.vat_amount) > 0 ? ` &middot; ${i.vat_inclusive ? "VAT inclusive" : "+ VAT"}` : ""
     }</span>
   </td>
@@ -87,7 +90,9 @@ function totalsText(order) {
 }
 
 function itemsText(order) {
-  return order.items.map((i) => `- ${i.quantity} x ${i.name}${i.size ? ` (${i.size})` : ""}: ${formatNaira(i.line_total)}`).join("\n");
+  return order.items
+    .map((i) => `- ${i.quantity} x ${i.name}${i.size ? ` (${i.size})` : ""}: ${formatNaira(i.line_total)}${i.components?.length ? `\n    Includes: ${componentsText(i.components)}` : ""}`)
+    .join("\n");
 }
 
 function deliveryText(order) {

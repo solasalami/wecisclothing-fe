@@ -5,6 +5,7 @@ import { useCart } from "./CartProvider";
 import ProductImage from "./ProductImage";
 import { formatNaira } from "@/lib/format";
 import { trackViewCart } from "@/lib/analytics";
+import { componentsText } from "@/lib/bundle-format";
 
 export default function CartView() {
   const { lines, subtotal, ready, update, remove } = useCart();
@@ -35,6 +36,7 @@ export default function CartView() {
                   <div>
                     <Link href={`/product/${l.slug}`} className="font-medium hover:text-gold-dark">{l.name}</Link>
                     {l.size && <p className="text-sm text-muted">Size: {l.size}</p>}
+                    {l.partsLabel && <p className="max-w-md text-sm text-muted">Includes: {componentsText(l.partsLabel)}</p>}
                     <p className="text-sm">{formatNaira(l.price)}</p>
                   </div>
                   <div className="flex items-center gap-4">

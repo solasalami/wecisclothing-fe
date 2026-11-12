@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { componentsText } from "@/lib/bundle-format";
 import Link from "next/link";
 import { getOrderByNumber, checkOrderAccessToken, claimPurchaseTracking, DELIVERY_METHODS } from "@/lib/orders";
 import { confirmPayment, ONLINE_METHODS, PROVIDER_NAMES } from "@/lib/payments";
@@ -102,7 +103,10 @@ export default async function OrderSuccessPage({ params, searchParams }) {
         <ul className="divide-y divide-line text-sm">
           {order.items.map((i) => (
             <li key={i.id} className="flex justify-between py-3">
-              <span>{i.quantity} × {i.name}{i.size ? ` (${i.size})` : ""}</span>
+              <span>
+                {i.quantity} × {i.name}{i.size ? ` (${i.size})` : ""}
+                {i.components?.length > 0 && <span className="block text-xs text-muted">Includes: {componentsText(i.components)}</span>}
+              </span>
               <span>{formatNaira(i.line_total)}</span>
             </li>
           ))}

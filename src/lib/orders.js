@@ -1,9 +1,11 @@
 import "server-only";
 import crypto from "node:crypto";
-import { query, queryOne, transaction } from "./db";
+import { query, queryOne, transaction, parseJson } from "./db";
 import { getProductsByIds, packagesAvailable } from "./catalog";
 import { getSetting } from "./settings";
 import { applyVat } from "./vat";
+import { getComponents } from "./bundles";
+import { lineKey } from "./bundle-format";
 
 export const DELIVERY_METHODS = {
   delivery_lagos: "Home delivery in Lagos",
@@ -29,7 +31,8 @@ export function orderTotal({ subtotal, vat_added, fee }) {
 
 /**
  * Re-price cart lines against the database (including VAT). Client prices are never trusted.
- * @param {{productId:number, size?:string, quantity:number}[]} lines
+ * A bundle package line carries `parts`: { [includedProductId]: size|null }, one per item.
+ * @param {{productId:number, size?:string, quantity:number, parts?:object}[]} lines
  */
 export async function priceCart(lines) {
   const clean = (Array.isArray(lines) ? lines : [])
@@ -37,41 +40,74 @@ export async function priceCart(lines) {
       productId: Number(l.productId),
       size: l.size ? String(l.size).slice(0, 40) : null,
       quantity: Math.min(Math.max(parseInt(l.quantity, 10) || 0, 0), 20),
+      parts: l.parts && typeof l.parts === "object" ? l.parts : null,
     }))
     .filter((l) => l.productId > 0 && l.quantity > 0)
     .slice(0, 50);
   const products = await getProductsByIds([...new Set(clean.map((l) => l.productId))]);
   const byId = new Map(products.map((p) => [p.id, p]));
+  const bundles = await getComponents(products.filter((p) => p.is_bundle).map((p) => p.id));
   const packagesOk = await packagesAvailable();
   const items = [];
   const problems = [];
+
+  // Stock is checked across the whole cart: a product bought on its own and inside a
+  // bundle draws on the same stock.
+  const stock = new Map(); // productId -> { name, track, qty, need, forBundle }
+  const demand = (p, qty, bundleName = null) => {
+    const s = stock.get(p.id) || { name: p.name, track: Boolean(p.track_stock), qty: Number(p.stock_qty), need: 0, forBundle: null };
+    s.need += qty;
+    if (bundleName) s.forBundle = bundleName;
+    stock.set(p.id, s);
+  };
+
   for (const l of clean) {
     const p = byId.get(l.productId);
     if (!p || !p.is_active || (p.kind === "package" && !packagesOk)) {
       problems.push(`An item in your cart is no longer available.`);
       continue;
     }
-    if (p.sizes?.length && (!l.size || !p.sizes.includes(l.size))) {
+    let components = null;
+    if (p.is_bundle) {
+      const included = bundles.get(p.id) || [];
+      const missing = included.find((c) => c.sizes.length && !c.sizes.includes(String(l.parts?.[c.id] ?? "")));
+      if (!included.length || missing) {
+        problems.push(`Please choose sizes for ${p.name}${missing ? ` (${missing.name})` : ""}.`);
+        continue;
+      }
+      components = included.map((c) => ({
+        product_id: c.id,
+        name: c.name,
+        sku: c.sku,
+        size: c.sizes.length ? String(l.parts[c.id]) : null,
+        image: c.image,
+      }));
+      for (const c of included) demand(c, l.quantity, p.name);
+    } else if (p.sizes?.length && (!l.size || !p.sizes.includes(l.size))) {
       problems.push(`Please choose a size for ${p.name}.`);
       continue;
     }
-    if (p.track_stock && p.stock_qty < l.quantity) {
-      problems.push(`Only ${p.stock_qty} of ${p.name} left in stock.`);
-      continue;
-    }
+    demand(p, l.quantity);
     items.push({
       product_id: p.id,
       name: p.name,
       sku: p.sku,
       slug: p.slug,
       kind: p.kind,
-      size: l.size,
+      size: components ? null : l.size,
+      components,
+      key: lineKey(p.id, components ? null : l.size, components ? l.parts : null),
       image: p.image,
       unit_price: Number(p.price),
       quantity: l.quantity,
       line_total: Number(p.price) * l.quantity,
       vat_inclusive: p.vat_inclusive,
     });
+  }
+  for (const s of stock.values()) {
+    if (s.track && s.qty < s.need) {
+      problems.push(s.qty > 0 ? `Only ${s.qty} of ${s.name} left in stock${s.forBundle ? ` (needed for ${s.forBundle})` : ""}.` : `${s.name} is out of stock${s.forBundle ? ` (needed for ${s.forBundle})` : ""}.`);
+    }
   }
   const subtotal = items.reduce((s, i) => s + i.line_total, 0);
   const tax = await getSetting("tax");
@@ -132,26 +168,29 @@ export async function createOrder({ customer, contact, delivery, items, subtotal
     const orderId = res.insertId;
     for (const it of items) {
       await tx.query(
-        `INSERT INTO order_items (order_id, product_id, name, sku, size, image, unit_price, quantity, line_total, vat_inclusive, vat_amount)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
-        [orderId, it.product_id, it.name, it.sku, it.size, it.image, it.unit_price, it.quantity, it.line_total, it.vat_inclusive, it.vat_amount]
+        `INSERT INTO order_items (order_id, product_id, name, sku, size, components, image, unit_price, quantity, line_total, vat_inclusive, vat_amount)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
+        [orderId, it.product_id, it.name, it.sku, it.size, it.components ? JSON.stringify(it.components) : null, it.image, it.unit_price, it.quantity, it.line_total, it.vat_inclusive, it.vat_amount]
       );
     }
     return { id: orderId, order_number: orderNumber, total };
   });
 }
 
+/** order_items rows with `components` parsed (bundle packages), [] for normal items. */
+export const withComponents = (rows) => rows.map((r) => ({ ...r, components: parseJson(r.components, []) || [] }));
+
 export async function getOrderByNumber(orderNumber) {
   const order = await queryOne("SELECT * FROM orders WHERE order_number = ?", [orderNumber]);
   if (!order) return null;
-  order.items = await query("SELECT * FROM order_items WHERE order_id = ? ORDER BY id", [order.id]);
+  order.items = withComponents(await query("SELECT * FROM order_items WHERE order_id = ? ORDER BY id", [order.id]));
   return order;
 }
 
 export async function getOrderById(id) {
   const order = await queryOne("SELECT * FROM orders WHERE id = ?", [id]);
   if (!order) return null;
-  order.items = await query("SELECT * FROM order_items WHERE order_id = ? ORDER BY id", [order.id]);
+  order.items = withComponents(await query("SELECT * FROM order_items WHERE order_id = ? ORDER BY id", [order.id]));
   order.payments = await query("SELECT * FROM payments WHERE order_id = ? ORDER BY id DESC", [order.id]);
   return order;
 }
@@ -169,13 +208,15 @@ export async function markOrderPaid(orderId, reference) {
       [reference, orderId]
     );
     if (res.affectedRows !== 1) return false;
-    const items = await tx.query("SELECT product_id, quantity FROM order_items WHERE order_id = ?", [orderId]);
+    const items = await tx.query("SELECT product_id, quantity, components FROM order_items WHERE order_id = ?", [orderId]);
+    const decrement = (productId, qty) =>
+      tx.query("UPDATE products SET stock_qty = GREATEST(stock_qty - ?, 0) WHERE id = ? AND track_stock = 1", [qty, productId]);
     for (const it of items) {
-      if (!it.product_id) continue;
-      await tx.query(
-        "UPDATE products SET stock_qty = GREATEST(stock_qty - ?, 0) WHERE id = ? AND track_stock = 1",
-        [it.quantity, it.product_id]
-      );
+      if (it.product_id) await decrement(it.product_id, it.quantity);
+      // Bundle packages: each included product leaves the shelf too.
+      for (const c of parseJson(it.components, []) || []) {
+        if (c?.product_id) await decrement(c.product_id, it.quantity);
+      }
     }
     return true;
   });

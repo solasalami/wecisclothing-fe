@@ -57,7 +57,18 @@ export default function ProductCard({ product, priority, sizes = "(max-width: 76
             {badge}
           </span>
         )}
-        {product.in_stock && <QuickBuy product={quick} />}
+        {product.in_stock &&
+          (product.is_bundle ? (
+            // A bundle needs a size for each item, so it goes to the product page instead of quick buy.
+            <Link
+              href={`/product/${product.slug}`}
+              className="absolute inset-x-3 bottom-3 hidden translate-y-4 bg-gold py-3 text-center text-xs font-semibold uppercase tracking-[0.18em] text-ink opacity-0 transition duration-300 hover:bg-gold-dark hover:text-white focus:translate-y-0 focus:opacity-100 group-hover:translate-y-0 group-hover:opacity-100 md:block"
+            >
+              Choose sizes
+            </Link>
+          ) : (
+            <QuickBuy product={quick} />
+          ))}
       </div>
       <Link href={`/product/${product.slug}`} className="mt-4 block px-1 text-center">
         <h3 className="font-sans text-[15px] leading-snug text-ink group-hover:text-gold-dark">{product.name}</h3>

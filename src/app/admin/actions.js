@@ -14,6 +14,7 @@ import { markOrderPaid, ORDER_STATUSES } from "@/lib/orders";
 import { queueOrderPaidEmails, sendOrderPaidEmails } from "@/lib/order-emails";
 import { SIZE_MEASURES, parseRange } from "@/lib/size-guide";
 import { sendReply } from "@/lib/contact";
+import { saveComponents } from "@/lib/bundles";
 
 // Clear cached storefront data after any content change (see lib/cache.js).
 const invalidateStore = () => updateTag(STORE_TAG);
@@ -59,6 +60,7 @@ export async function saveProduct(_prev, fd) {
   if (!name) return { error: "Name is required" };
   if (price == null || !(price >= 0)) return { error: "Enter a valid price" };
   const compare = num(fd, "compare_at_price");
+  const componentIds = kind === "package" ? fd.getAll("component_ids").map(Number).filter(Boolean) : [];
   const data = {
     kind,
     name,
@@ -70,7 +72,8 @@ export async function saveProduct(_prev, fd) {
     price,
     compare_at_price: compare && compare > price ? compare : null,
     vat_inclusive: bool(fd, "vat_inclusive"),
-    sizes: JSON.stringify(csv(fd.get("sizes"))),
+    // Bundle packages have no size of their own: each included product has its sizes.
+    sizes: JSON.stringify(componentIds.length ? [] : csv(fd.get("sizes"))),
     stock_qty: Math.max(0, num(fd, "stock_qty") || 0),
     track_stock: bool(fd, "track_stock"),
     is_active: bool(fd, "is_active"),
@@ -103,6 +106,7 @@ export async function saveProduct(_prev, fd) {
       const res = await tx.query(`INSERT INTO products (${cols.join(",")}) VALUES (${cols.map(() => "?").join(",")})`, cols.map((c) => data[c]));
       pid = res.insertId;
     }
+    if (kind === "package") await saveComponents(tx, pid, componentIds);
     await tx.query("DELETE FROM product_categories WHERE product_id = ?", [pid]);
     for (const cid of categoryIds) await tx.query("INSERT IGNORE INTO product_categories (product_id, category_id) VALUES (?,?)", [pid, cid]);
 
@@ -133,9 +137,11 @@ export async function saveProduct(_prev, fd) {
 export async function deleteProduct(fd) {
   await requireAdmin();
   const id = Number(fd.get("id"));
-  const used = await queryOne("SELECT id FROM order_items WHERE product_id = ? LIMIT 1", [id]);
+  const used =
+    (await queryOne("SELECT id FROM order_items WHERE product_id = ? LIMIT 1", [id])) ||
+    (await queryOne("SELECT id FROM package_components WHERE product_id = ? LIMIT 1", [id]));
   if (used) {
-    // keep order history intact: just hide it
+    // Keep order history and packages that include it intact: just hide it.
     await query("UPDATE products SET is_active = 0 WHERE id = ?", [id]);
   } else {
     await query("DELETE FROM products WHERE id = ?", [id]);

@@ -5,10 +5,13 @@ import RichText from "./RichText";
 import ImageManager from "./ImageManager";
 import { saveProduct } from "@/app/admin/actions";
 import { CategoryPicker } from "./CategoryTree";
+import BundlePicker from "./BundlePicker";
 
-export default function ProductForm({ product, categories, kind = "product", defaultBadge = "", back = "" }) {
+// bundleProducts: packages only, every normal product that can be included in the bundle.
+export default function ProductForm({ product, categories, kind = "product", defaultBadge = "", back = "", bundleProducts = [] }) {
   const p = product || { kind, badge: defaultBadge, is_active: 1, sizes: kind === "package" ? [] : ["S", "M", "L", "XL", "XXL"], images: [], categoryIds: [], package_items: [] };
   const isPackage = (p.kind || kind) === "package";
+  const isBundle = isPackage && (p.componentIds || []).length > 0;
   return (
     <ActionForm action={saveProduct} className="grid gap-6 xl:grid-cols-[1fr_340px]">
       <input type="hidden" name="id" value={p.id || ""} />
@@ -20,15 +23,21 @@ export default function ProductForm({ product, categories, kind = "product", def
           <TextArea label="Short summary" name="short_description" rows={2} defaultValue={p.short_description || ""} hint="One or two sentences shown near the price." />
           {isPackage && (
             <TextArea
-              label="What's included (one per line)"
+              label={isBundle ? "Also included (optional, one per line)" : "What's included (one per line)"}
               name="package_items"
-              rows={5}
+              rows={isBundle ? 3 : 5}
               defaultValue={(p.package_items || []).join("\n")}
-              hint="e.g. Agbada (3 piece) · Matching fila · Free delivery in Lagos"
+              hint={isBundle ? "Extras that aren't products, e.g. Free delivery in Lagos · Gift wrapping" : "e.g. Agbada (3 piece) · Matching fila · Free delivery in Lagos. Or add real products below to make a bundle."}
             />
           )}
           <RichText label="Full description" name="description" defaultValue={p.description || ""} />
         </Card>
+
+        {isPackage && (
+          <Card title="Products in this package">
+            <BundlePicker products={bundleProducts} initial={p.componentIds || []} />
+          </Card>
+        )}
 
         <Card title="Photos">
           <ImageManager images={p.images} />
@@ -71,8 +80,22 @@ export default function ProductForm({ product, categories, kind = "product", def
         </Card>
 
         <Card title="Sizes & stock">
-          <Field label="Sizes (comma separated)" name="sizes" defaultValue={(p.sizes || []).join(", ")} hint="e.g. S, M, L, XL, XXL, Custom. Leave blank for one-size." />
-          <Check label="Track stock" name="track_stock" defaultChecked={p.track_stock} hint="Leave off for made-to-order items." />
+          {isBundle ? (
+            <p className="text-sm text-muted">Sizes come from each product in the package; shoppers pick one for every item.</p>
+          ) : (
+            <Field
+              label="Sizes (comma separated)"
+              name="sizes"
+              defaultValue={(p.sizes || []).join(", ")}
+              hint={isPackage ? "Leave blank if you add products above (each has its own sizes)." : "e.g. S, M, L, XL, XXL, Custom. Leave blank for one-size."}
+            />
+          )}
+          <Check
+            label="Track stock"
+            name="track_stock"
+            defaultChecked={p.track_stock}
+            hint={isPackage ? "Optional limit on how many packages can be sold. Stock of each included product is always checked." : "Leave off for made-to-order items."}
+          />
           <Field label="Quantity in stock" name="stock_qty" type="number" min="0" defaultValue={p.stock_qty || 0} />
         </Card>
 

@@ -74,7 +74,7 @@ export async function createCashierPayment({ reference, amountNaira, returnUrl, 
     },
     product: {
       name: "Wecis Clothing order",
-      description: items.map((i) => `${i.quantity} x ${i.name}`).join(", ").slice(0, 250),
+      description: items.map((i) => `${i.quantity} x ${i.name}${i.components?.length ? ` (${i.components.length} items)` : ""}`).join(", ").slice(0, 250),
     },
   };
   const res = await fetch(`${c.base}/api/v1/international/cashier/create`, {

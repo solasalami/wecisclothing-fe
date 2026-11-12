@@ -132,6 +132,7 @@ CREATE TABLE IF NOT EXISTS order_items (
   name VARCHAR(200) NOT NULL,
   sku VARCHAR(64) NULL,
   size VARCHAR(40) NULL,
+  components JSON NULL,                     -- bundle packages: [{product_id, name, sku, size, image}] at the time of purchase
   image VARCHAR(255) NULL,
   unit_price DECIMAL(12,2) NOT NULL,
   quantity INT NOT NULL,
@@ -248,4 +249,16 @@ CREATE TABLE IF NOT EXISTS customer_emails (
   copied_to VARCHAR(190) NULL,              -- store mailbox Bcc'd on the email
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   KEY idx_cust_email (email, created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Bundle packages: the real products a package is made of (the shopper picks a size for each).
+CREATE TABLE IF NOT EXISTS package_components (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  package_id INT UNSIGNED NOT NULL,         -- the package (products.kind = 'package')
+  product_id INT UNSIGNED NOT NULL,         -- a real product included in it
+  sort_order INT NOT NULL DEFAULT 0,
+  UNIQUE KEY uq_pkg_product (package_id, product_id),
+  KEY idx_pc_product (product_id),
+  CONSTRAINT fk_pkgc_package FOREIGN KEY (package_id) REFERENCES products(id) ON DELETE CASCADE,
+  CONSTRAINT fk_pkgc_product FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

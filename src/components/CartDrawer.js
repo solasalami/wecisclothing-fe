@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useCart } from "./CartProvider";
 import { CloseIcon } from "./icons";
 import { formatNaira } from "@/lib/format";
+import { componentsText } from "@/lib/bundle-format";
 import ProductImage from "./ProductImage";
 
 export default function CartDrawer() {
@@ -31,6 +32,7 @@ export default function CartDrawer() {
                       {l.name}
                     </Link>
                     {l.size && <p className="text-muted">Size: {l.size}</p>}
+                    {l.partsLabel && <p className="text-muted">Includes: {componentsText(l.partsLabel)}</p>}
                     <p className="mt-1">{formatNaira(l.price)}</p>
                     <div className="mt-2 flex items-center gap-3">
                       <div className="flex items-center border border-line">

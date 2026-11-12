@@ -6,6 +6,7 @@ import ProductImage from "./ProductImage";
 import OrderTotals from "./OrderTotals";
 import { formatNaira } from "@/lib/format";
 import { quoteCart, placeOrder } from "@/app/actions/checkout";
+import { componentsText } from "@/lib/bundle-format";
 import { NG_STATES } from "@/lib/ng-states";
 import { trackBeginCheckout, trackAddShippingInfo, trackAddPaymentInfo, readAttribution } from "@/lib/analytics";
 
@@ -55,7 +56,7 @@ export default function CheckoutForm({ customer, addresses = [], shipping, showr
   useEffect(() => {
     if (!ready || !lines.length) return;
     let cancelled = false;
-    quoteCart(lines.map(({ productId, size, quantity }) => ({ productId, size, quantity })), method).then((q) => {
+    quoteCart(lines.map(({ productId, size, quantity, parts }) => ({ productId, size, quantity, parts })), method).then((q) => {
       if (cancelled) return;
       setQuote(q);
       syncPrices(q.items);
@@ -84,7 +85,7 @@ export default function CheckoutForm({ customer, addresses = [], shipping, showr
     }
     const f = new FormData(e.currentTarget);
     const payload = {
-      lines: lines.map(({ productId, size, quantity }) => ({ productId, size, quantity })),
+      lines: lines.map(({ productId, size, quantity, parts }) => ({ productId, size, quantity, parts })),
       contact: {
         first_name: f.get("first_name"),
         last_name: f.get("last_name"),
@@ -289,6 +290,7 @@ export default function CheckoutForm({ customer, addresses = [], shipping, showr
               <div className="flex-1">
                 <p>{l.name}</p>
                 {l.size && <p className="text-muted">Size: {l.size}</p>}
+                {l.partsLabel && <p className="text-muted">Includes: {componentsText(l.partsLabel)}</p>}
                 {vatNote(quote, l)}
               </div>
               <span>{formatNaira(l.price * l.quantity)}</span>
@@ -313,7 +315,7 @@ export default function CheckoutForm({ customer, addresses = [], shipping, showr
 /** "+ VAT" / "VAT incl." under each line, once the server quote is in. */
 function vatNote(quote, line) {
   if (!quote?.vat_rate) return null;
-  const item = quote.items.find((i) => i.product_id === line.productId && (i.size || null) === (line.size || null));
+  const item = quote.items.find((i) => i.key === line.key);
   if (!item) return null;
   const label = quote.vat_label || "VAT";
   return <p className="text-xs text-muted">{item.vat_inclusive ? `${label} inclusive` : `+ ${label}`}</p>;

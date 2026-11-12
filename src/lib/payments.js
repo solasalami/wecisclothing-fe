@@ -55,7 +55,7 @@ export async function startOnlinePayment(order) {
         custom_fields: [
           { display_name: "Order", variable_name: "order_number", value: order.order_number },
           { display_name: "Customer", variable_name: "customer", value: `${order.first_name} ${order.last_name}`.trim() },
-          { display_name: "Items", variable_name: "items", value: order.items.map((i) => `${i.quantity} x ${i.name}`).join(", ").slice(0, 250) },
+          { display_name: "Items", variable_name: "items", value: order.items.map((i) => `${i.quantity} x ${i.name}${i.components?.length ? ` (${i.components.length} items)` : ""}`).join(", ").slice(0, 250) },
         ],
       },
     });

@@ -55,7 +55,7 @@ export default async function CampaignAdmin({ searchParams }) {
 
       <Card title={`Packages (${packages.length})`}>
         <p className="text-sm text-muted">
-          Packages are products with a list of “what’s included”. They appear on the campaign page{c.hide_packages_when_off ? " and are hidden from the shop outside the campaign dates" : ""}.
+          A package is either a bundle of real products sold together at one price (the shopper picks a size for each item), or a single item with a list of “what’s included”. Packages appear on the promo page{c.hide_packages_when_off ? " and are hidden from the shop outside the campaign dates" : ""}.
           Unpublish last season’s packages before starting a new campaign.
         </p>
         {packages.length === 0 ? (

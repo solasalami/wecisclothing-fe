@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { getAllCategoriesTree, getProductForEdit } from "@/lib/admin-data";
+import { getAllCategoriesTree, getProductForEdit, getBundleCandidates } from "@/lib/admin-data";
 import ProductForm from "@/components/admin/ProductForm";
 import Link from "next/link";
 import { PageHeader } from "@/components/admin/Fields";
@@ -14,6 +14,7 @@ export default async function EditProduct({ params, searchParams }) {
   const { saved, back: backParam } = await searchParams;
   const [product, categories] = await Promise.all([getProductForEdit(Number(id)), getAllCategoriesTree()]);
   if (!product) notFound();
+  const bundleProducts = product.kind === "package" ? await getBundleCandidates() : [];
   const back = productBack(backParam, product.kind);
   return (
     <div>
@@ -28,7 +29,7 @@ export default async function EditProduct({ params, searchParams }) {
         </form>
       </PageHeader>
       {saved && <p className="mb-4 border border-green-200 bg-green-50 p-3 text-sm text-green-700">Saved.</p>}
-      <ProductForm key={product.updated_at?.toString()} product={product} categories={categories} back={back.href} />
+      <ProductForm key={product.updated_at?.toString()} product={product} categories={categories} back={back.href} bundleProducts={bundleProducts} />
     </div>
   );
 }

@@ -8,15 +8,21 @@ import { startOnlinePayment, onlinePaymentAvailable, ONLINE_METHODS } from "@/li
 import { verifiedCustomerByEmail, hasUnverifiedAccount, rememberAddress } from "@/lib/customers";
 import { isDisabledEmail } from "@/lib/customer-admin";
 
-const lineSchema = z.object({ productId: z.coerce.number().int().positive(), size: z.string().nullable().optional(), quantity: z.coerce.number().int().min(1).max(20) });
+const lineSchema = z.object({
+  productId: z.coerce.number().int().positive(),
+  size: z.string().nullable().optional(),
+  quantity: z.coerce.number().int().min(1).max(20),
+  // Bundle packages: the size chosen for each included product, { [productId]: size|null }.
+  parts: z.record(z.string(), z.string().max(40).nullable()).nullable().optional(),
+});
 
 export async function quoteCart(lines, deliveryMethod) {
   const { shipping } = await getSettings();
   const priced = await priceCart(lines);
   const fee = deliveryMethod && DELIVERY_METHODS[deliveryMethod] ? shippingFee(deliveryMethod, priced.subtotal, shipping) : 0;
   return {
-    items: priced.items.map(({ product_id, size, unit_price, quantity, line_total, name, vat_inclusive, vat_amount }) => ({
-      product_id, size, unit_price, quantity, line_total, name, vat_inclusive, vat_amount,
+    items: priced.items.map(({ key, product_id, size, components, unit_price, quantity, line_total, name, vat_inclusive, vat_amount }) => ({
+      key, product_id, size, components, unit_price, quantity, line_total, name, vat_inclusive, vat_amount,
     })),
     subtotal: priced.subtotal,
     vat_rate: priced.vat_rate,

@@ -7,6 +7,7 @@ import { formatNaira, whatsappLink, telLink, stripHtml } from "@/lib/format";
 import { priceVatNote } from "@/lib/vat";
 import ProductGallery from "@/components/ProductGallery";
 import AddToCart from "@/components/AddToCart";
+import BundleAddToCart from "@/components/BundleAddToCart";
 import ProductGrid from "@/components/ProductGrid";
 import { WhatsAppIcon, PhoneIcon } from "@/components/icons";
 
@@ -33,7 +34,10 @@ export default async function ProductPage({ params }) {
   // Seasonal packages can't be bought outside their campaign (if configured).
   const purchasable = product.in_stock && (!isPackage || packagesOk);
   const vatNote = priceVatNote(product.vat_inclusive, tax);
-  const onSale = product.compare_at_price && Number(product.compare_at_price) > Number(product.price);
+  const isBundle = Boolean(product.components?.length);
+  // Bundles show what the items would cost separately ("Worth"), from compare-at or their total.
+  const wasPrice = isBundle ? product.worth : product.compare_at_price;
+  const onSale = wasPrice && Number(wasPrice) > Number(product.price);
   const url = `${process.env.NEXT_PUBLIC_SITE_URL || ""}/product/${product.slug}`;
 
   // Only pass serialisable, client-safe fields to client components.
@@ -97,21 +101,35 @@ export default async function ProductPage({ params }) {
           <h1 className="text-3xl md:text-4xl">{product.name}</h1>
           <p className="mt-4 text-2xl">
             {formatNaira(product.price)}
-            {onSale && <span className="ml-3 text-lg text-muted line-through">{formatNaira(product.compare_at_price)}</span>}
+            {onSale && (isBundle ? (
+              <span className="ml-3 text-lg text-muted">
+                Worth <span className="line-through">{formatNaira(wasPrice)}</span>
+                <span className="ml-2 text-sm text-green-700">You save {formatNaira(Number(wasPrice) - Number(product.price))}</span>
+              </span>
+            ) : (
+              <span className="ml-3 text-lg text-muted line-through">{formatNaira(wasPrice)}</span>
+            ))}
           </p>
           {vatNote && <p className="mt-1 text-xs text-muted">{vatNote}</p>}
           {product.short_description && <p className="mt-4 text-muted">{product.short_description}</p>}
 
           {product.package_items.length > 0 && (
             <div className="mt-6 border border-gold/40 bg-gold-light/50 p-4">
-              <p className="label !text-gold-dark">What&apos;s included</p>
+              <p className="label !text-gold-dark">{isBundle ? "Also included" : <>What&apos;s included</>}</p>
               <ul className="list-disc space-y-1 pl-5 text-sm">
                 {product.package_items.map((it, i) => <li key={i}>{it}</li>)}
               </ul>
             </div>
           )}
 
-          <AddToCart product={clientProduct} />
+          {isBundle ? (
+            <BundleAddToCart
+              product={{ ...clientProduct, out_of_stock_items: product.out_of_stock_items }}
+              components={product.components.map(({ id, name, slug, price, sizes, image, is_active }) => ({ id, name, slug, price, sizes, image, is_active }))}
+            />
+          ) : (
+            <AddToCart product={clientProduct} />
+          )}
 
           <div className="mt-6 grid gap-3 sm:grid-cols-2">
             <a

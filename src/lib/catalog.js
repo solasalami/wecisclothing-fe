@@ -3,6 +3,7 @@ import { query, queryOne, parseJson } from "./db";
 import { getSetting } from "./settings";
 import { isCampaignLive } from "./campaign";
 import { cached } from "./cache";
+import { getComponents, bundleWorth } from "./bundles";
 
 /** Seasonal packages are hidden from listings (and can't be bought) outside their campaign, if configured. */
 export async function packagesAvailable() {
@@ -14,7 +15,8 @@ const PRODUCT_COLUMNS = `
   p.id, p.kind, p.name, p.slug, p.sku, p.short_description, p.price, p.compare_at_price, p.vat_inclusive,
   p.stock_qty, p.track_stock, p.is_featured, p.sizes, p.badge, p.created_at,
   (SELECT url FROM product_images i WHERE i.product_id = p.id ORDER BY i.sort_order, i.id LIMIT 1) AS image,
-  (SELECT url FROM product_images i WHERE i.product_id = p.id ORDER BY i.sort_order, i.id LIMIT 1 OFFSET 1) AS image_alt`;
+  (SELECT url FROM product_images i WHERE i.product_id = p.id ORDER BY i.sort_order, i.id LIMIT 1 OFFSET 1) AS image_alt,
+  (SELECT COUNT(*) FROM package_components pc WHERE pc.package_id = p.id) AS component_count`;
 
 const NEW_ARRIVAL_DAYS = 45;
 
@@ -32,7 +34,10 @@ function hydrate(p) {
     display_badge: displayBadge(p),
     sizes: parseJson(p.sizes, []),
     package_items: parseJson(p.package_items, []),
-    in_stock: !p.track_stock || p.stock_qty > 0,
+    // A bundle is in stock only if every included product is too.
+    in_stock: (!p.track_stock || p.stock_qty > 0) && !(p.components || []).some((c) => !c.in_stock),
+    // A bundle package is made of real products (the shopper picks a size for each).
+    is_bundle: p.kind === "package" && Number(p.component_count ?? (p.components?.length || 0)) > 0,
   };
 }
 
@@ -139,6 +144,17 @@ async function loadProductBySlug(slug) {
     "SELECT c.id, c.name, c.slug FROM product_categories pc JOIN categories c ON c.id = pc.category_id WHERE pc.product_id = ? AND c.is_active = 1",
     [p.id]
   );
+  if (p.kind === "package") {
+    const components = (await getComponents([p.id])).get(p.id) || [];
+    if (components.length) {
+      // Sold as one line, with no size of its own.
+      p.components = components;
+      p.component_count = components.length;
+      p.sizes = "[]";
+      p.worth = bundleWorth(p, components);
+      p.out_of_stock_items = components.filter((c) => !c.in_stock).map((c) => c.name);
+    }
+  }
   return hydrate(p);
 }
 const loadProductBySlugCached = cached(loadProductBySlug, "productBySlug");

@@ -46,6 +46,17 @@ export default async function OrderAdmin({ params, searchParams }) {
                       {Number(i.vat_amount) > 0 && (
                         <span className="text-muted"> · {i.vat_inclusive ? "VAT incl." : "+ VAT"} {formatNaira(i.vat_amount)}</span>
                       )}
+                      {i.components?.length > 0 && (
+                        // Bundle package: what to pack, with the size chosen for each item.
+                        <ul className="mt-1.5 space-y-0.5 border-l-2 border-gold pl-3 text-xs">
+                          {i.components.map((c, n) => (
+                            <li key={n}>
+                              {c.product_id ? <Link href={`/admin/products/${c.product_id}`} className="hover:underline">{c.name}</Link> : c.name}
+                              <span className="text-muted">{c.size ? ` · Size ${c.size}` : " · One size"}{i.quantity > 1 ? ` · × ${i.quantity}` : ""}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
                     </td>
                     <td className="text-right">{i.quantity} × {formatNaira(i.unit_price)}</td>
                     <td className="w-32 text-right">{formatNaira(i.line_total)}</td>
