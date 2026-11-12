@@ -25,6 +25,10 @@ CREATE TABLE IF NOT EXISTS products (
   short_description VARCHAR(500) NULL,
   description TEXT NULL,
   package_items JSON NULL,            -- ["Agbada (3 piece)", "Cap", ...] for festive packages
+  pick_category_id INT UNSIGNED NULL, -- pick-your-own bundle: shoppers choose outfits from this category
+  pick_min TINYINT UNSIGNED NULL,     -- fewest outfits a shopper can pick
+  pick_max TINYINT UNSIGNED NULL,     -- most outfits a shopper can pick
+  pick_prices JSON NULL,              -- price per number picked, e.g. {"3":350000,"4":450000,"5":540000}
   price DECIMAL(12,2) NOT NULL DEFAULT 0,
   compare_at_price DECIMAL(12,2) NULL, -- old price shown struck-through
   vat_inclusive TINYINT(1) NOT NULL DEFAULT 0, -- 1 = price already includes VAT; 0 = VAT added at checkout

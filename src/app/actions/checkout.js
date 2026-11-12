@@ -14,6 +14,8 @@ const lineSchema = z.object({
   quantity: z.coerce.number().int().min(1).max(20),
   // Bundle packages: the size chosen for each included product, { [productId]: size|null }.
   parts: z.record(z.string(), z.string().max(40).nullable()).nullable().optional(),
+  // Pick-your-own bundles: the outfits chosen, repeats allowed, each with its size.
+  picks: z.array(z.object({ productId: z.coerce.number().int().positive(), size: z.string().max(40).nullable().optional() })).max(10).nullable().optional(),
 });
 
 export async function quoteCart(lines, deliveryMethod) {

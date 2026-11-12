@@ -5,13 +5,16 @@ import RichText from "./RichText";
 import ImageManager from "./ImageManager";
 import { saveProduct } from "@/app/admin/actions";
 import { CategoryPicker } from "./CategoryTree";
-import BundlePicker from "./BundlePicker";
+import PackageTypeFields from "./PackageTypeFields";
 
-// bundleProducts: packages only, every normal product that can be included in the bundle.
-export default function ProductForm({ product, categories, kind = "product", defaultBadge = "", back = "", bundleProducts = [] }) {
+// Packages only: bundleProducts (products a fixed bundle can include), pickCategories (categories a
+// pick-your-own bundle can draw on).
+export default function ProductForm({ product, categories, kind = "product", defaultBadge = "", back = "", bundleProducts = [], pickCategories = [] }) {
   const p = product || { kind, badge: defaultBadge, is_active: 1, sizes: kind === "package" ? [] : ["S", "M", "L", "XL", "XXL"], images: [], categoryIds: [], package_items: [] };
   const isPackage = (p.kind || kind) === "package";
-  const isBundle = isPackage && (p.componentIds || []).length > 0;
+  const isPick = isPackage && Boolean(p.pick);
+  const isBundle = isPackage && ((p.componentIds || []).length > 0 || isPick);
+  const packageType = isPick ? "pick" : (p.componentIds || []).length ? "fixed" : "simple";
   return (
     <ActionForm action={saveProduct} className="grid gap-6 xl:grid-cols-[1fr_340px]">
       <input type="hidden" name="id" value={p.id || ""} />
@@ -34,8 +37,14 @@ export default function ProductForm({ product, categories, kind = "product", def
         </Card>
 
         {isPackage && (
-          <Card title="Products in this package">
-            <BundlePicker products={bundleProducts} initial={p.componentIds || []} />
+          <Card title="Package type">
+            <PackageTypeFields
+              initialType={packageType}
+              bundleProducts={bundleProducts}
+              componentIds={p.componentIds || []}
+              categories={pickCategories}
+              pick={p.pick || null}
+            />
           </Card>
         )}
 
@@ -68,7 +77,16 @@ export default function ProductForm({ product, categories, kind = "product", def
         </Card>
 
         <Card title="Pricing (₦)">
-          <Field label="Price" name="price" type="number" min="0" step="1" defaultValue={p.price != null ? Number(p.price) : ""} required />
+          <Field
+            label="Price"
+            name="price"
+            type="number"
+            min="0"
+            step="1"
+            defaultValue={p.price != null ? Number(p.price) : ""}
+            required={!isPackage}
+            hint={isPackage ? "Not used for \u201cShopper picks from a category\u201d packages: they use the price for each number of outfits." : undefined}
+          />
           <Field label="Compare-at price" name="compare_at_price" type="number" min="0" step="1" defaultValue={p.compare_at_price ? Number(p.compare_at_price) : ""} hint="Optional old price, shown struck through." />
           <Check
             label="Price includes VAT"

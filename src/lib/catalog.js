@@ -3,7 +3,7 @@ import { query, queryOne, parseJson } from "./db";
 import { getSetting } from "./settings";
 import { isCampaignLive } from "./campaign";
 import { cached } from "./cache";
-import { getComponents, bundleWorth } from "./bundles";
+import { getComponents, bundleWorth, pickRules, getPickPool } from "./bundles";
 
 /** Seasonal packages are hidden from listings (and can't be bought) outside their campaign, if configured. */
 export async function packagesAvailable() {
@@ -16,7 +16,8 @@ const PRODUCT_COLUMNS = `
   p.stock_qty, p.track_stock, p.is_featured, p.sizes, p.badge, p.created_at,
   (SELECT url FROM product_images i WHERE i.product_id = p.id ORDER BY i.sort_order, i.id LIMIT 1) AS image,
   (SELECT url FROM product_images i WHERE i.product_id = p.id ORDER BY i.sort_order, i.id LIMIT 1 OFFSET 1) AS image_alt,
-  (SELECT COUNT(*) FROM package_components pc WHERE pc.package_id = p.id) AS component_count`;
+  (SELECT COUNT(*) FROM package_components pc WHERE pc.package_id = p.id) AS component_count,
+  p.pick_category_id, p.pick_min, p.pick_max, p.pick_prices`;
 
 const NEW_ARRIVAL_DAYS = 45;
 
@@ -38,6 +39,8 @@ function hydrate(p) {
     in_stock: (!p.track_stock || p.stock_qty > 0) && !(p.components || []).some((c) => !c.in_stock),
     // A bundle package is made of real products (the shopper picks a size for each).
     is_bundle: p.kind === "package" && Number(p.component_count ?? (p.components?.length || 0)) > 0,
+    // Pick-your-own: the shopper chooses outfits from a category ("From" the lowest price).
+    is_pick_bundle: p.kind === "package" && Boolean(p.pick_category_id),
   };
 }
 
@@ -144,7 +147,12 @@ async function loadProductBySlug(slug) {
     "SELECT c.id, c.name, c.slug FROM product_categories pc JOIN categories c ON c.id = pc.category_id WHERE pc.product_id = ? AND c.is_active = 1",
     [p.id]
   );
-  if (p.kind === "package") {
+  const rules = p.kind === "package" ? pickRules(p) : null;
+  if (rules) {
+    const cat = await queryOne("SELECT name FROM categories WHERE id = ?", [rules.categoryId]);
+    p.pick = { ...rules, categoryName: cat?.name || "", pool: await getPickPool(rules.categoryId) };
+    p.sizes = "[]";
+  } else if (p.kind === "package") {
     const components = (await getComponents([p.id])).get(p.id) || [];
     if (components.length) {
       // Sold as one line, with no size of its own.

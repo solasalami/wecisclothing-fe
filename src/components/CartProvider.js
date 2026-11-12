@@ -44,9 +44,10 @@ export function CartProvider({ children }) {
 
   // parts/partsLabel: bundle packages only, the size chosen for each included product
   // ({ [productId]: size|null }) and [{ name, size }] to show in the bag.
-  const add = useCallback((product, { quantity = 1, size = null, parts = null, partsLabel = null } = {}) => {
+  // picks: pick-your-own bundles only, [{ productId, size }] (the same outfit may appear twice).
+  const add = useCallback((product, { quantity = 1, size = null, parts = null, picks = null, partsLabel = null } = {}) => {
     setLines((prev) => {
-      const key = lineKey(product.id, size, parts);
+      const key = lineKey(product.id, size, parts, picks);
       const existing = prev.find((l) => l.key === key);
       if (existing) return prev.map((l) => (l.key === key ? { ...l, quantity: Math.min(l.quantity + quantity, 20) } : l));
       return [
@@ -62,6 +63,7 @@ export function CartProvider({ children }) {
           image: product.image,
           size,
           ...(parts ? { parts, partsLabel } : {}),
+          ...(picks ? { picks, partsLabel } : {}),
           quantity,
         },
       ];

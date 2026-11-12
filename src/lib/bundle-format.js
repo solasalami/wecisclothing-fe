@@ -12,10 +12,30 @@ export function partsKey(parts) {
     .join(",");
 }
 
-/** Identity of a cart / order line: the same product with other sizes is a separate line. */
-export function lineKey(productId, size, parts) {
-  const pk = partsKey(parts);
+/** Pick-your-own bundles: the chosen outfits as stable text, repeats kept, e.g. "4=L,4=M,9=". */
+export function picksKey(picks) {
+  if (!Array.isArray(picks) || !picks.length) return "";
+  return picks
+    .map((p) => `${Number(p.productId)}=${p.size || ""}`)
+    .sort()
+    .join(",");
+}
+
+/** Identity of a cart / order line: the same product with other sizes (or picks) is a separate line. */
+export function lineKey(productId, size, parts, picks) {
+  const pk = partsKey(parts) || picksKey(picks);
   return `${productId}:${size || ""}${pk ? `:${pk}` : ""}`;
+}
+
+/** Pick-your-own bundles: the price for each number of outfits, from min to max. */
+export function pickTiers(pick) {
+  const out = [];
+  if (!pick) return out;
+  for (let n = Number(pick.min); n <= Number(pick.max); n++) {
+    const price = Number(pick.prices?.[n]);
+    if (price > 0) out.push({ count: n, price });
+  }
+  return out;
 }
 
 /** "Agbada (L), Ankara gown (M), Cap" from [{ name, size }]. */

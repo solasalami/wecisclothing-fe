@@ -4,7 +4,7 @@ import { query, queryOne, transaction, parseJson } from "./db";
 import { getProductsByIds, packagesAvailable } from "./catalog";
 import { getSetting } from "./settings";
 import { applyVat } from "./vat";
-import { getComponents } from "./bundles";
+import { getComponents, pickRules, pickPrice, getPickPool } from "./bundles";
 import { lineKey } from "./bundle-format";
 
 export const DELIVERY_METHODS = {
@@ -41,6 +41,9 @@ export async function priceCart(lines) {
       size: l.size ? String(l.size).slice(0, 40) : null,
       quantity: Math.min(Math.max(parseInt(l.quantity, 10) || 0, 0), 20),
       parts: l.parts && typeof l.parts === "object" ? l.parts : null,
+      picks: Array.isArray(l.picks)
+        ? l.picks.slice(0, 10).map((x) => ({ productId: Number(x?.productId), size: x?.size ? String(x.size).slice(0, 40) : null }))
+        : null,
     }))
     .filter((l) => l.productId > 0 && l.quantity > 0)
     .slice(0, 50);
@@ -48,6 +51,12 @@ export async function priceCart(lines) {
   const byId = new Map(products.map((p) => [p.id, p]));
   const bundles = await getComponents(products.filter((p) => p.is_bundle).map((p) => p.id));
   const packagesOk = await packagesAvailable();
+  // Pick-your-own bundles: each one's pool of outfits, by category.
+  const pools = new Map();
+  for (const p of products) {
+    const rules = p.is_pick_bundle ? pickRules(p) : null;
+    if (rules && !pools.has(rules.categoryId)) pools.set(rules.categoryId, new Map((await getPickPool(rules.categoryId, { limit: 500 })).map((o) => [o.id, o])));
+  }
   const items = [];
   const problems = [];
 
@@ -68,7 +77,26 @@ export async function priceCart(lines) {
       continue;
     }
     let components = null;
-    if (p.is_bundle) {
+    let unitPrice = Number(p.price);
+    if (p.is_pick_bundle) {
+      const rules = pickRules(p);
+      const picks = l.picks || [];
+      const price = pickPrice(rules, picks.length);
+      if (!price) {
+        problems.push(`Please choose ${rules.min === rules.max ? rules.min : `${rules.min} to ${rules.max}`} outfits for ${p.name}.`);
+        continue;
+      }
+      const pool = pools.get(rules.categoryId);
+      const chosen = picks.map((x) => ({ outfit: pool.get(x.productId), size: x.size }));
+      const bad = chosen.find(({ outfit, size }) => !outfit || (outfit.sizes.length ? !outfit.sizes.includes(size || "") : size));
+      if (bad) {
+        problems.push(bad.outfit ? `Please choose a size for ${bad.outfit.name} in ${p.name}.` : `One of your outfits is no longer available in ${p.name}.`);
+        continue;
+      }
+      unitPrice = price;
+      components = chosen.map(({ outfit, size }) => ({ product_id: outfit.id, name: outfit.name, sku: outfit.sku, size: size || null, image: outfit.image }));
+      for (const { outfit } of chosen) demand(outfit, l.quantity, p.name);
+    } else if (p.is_bundle) {
       const included = bundles.get(p.id) || [];
       const missing = included.find((c) => c.sizes.length && !c.sizes.includes(String(l.parts?.[c.id] ?? "")));
       if (!included.length || missing) {
@@ -96,11 +124,11 @@ export async function priceCart(lines) {
       kind: p.kind,
       size: components ? null : l.size,
       components,
-      key: lineKey(p.id, components ? null : l.size, components ? l.parts : null),
+      key: lineKey(p.id, components ? null : l.size, p.is_bundle ? l.parts : null, p.is_pick_bundle ? l.picks : null),
       image: p.image,
-      unit_price: Number(p.price),
+      unit_price: unitPrice,
       quantity: l.quantity,
-      line_total: Number(p.price) * l.quantity,
+      line_total: unitPrice * l.quantity,
       vat_inclusive: p.vat_inclusive,
     });
   }

@@ -56,11 +56,29 @@ export async function saveProduct(_prev, fd) {
   const id = Number(fd.get("id")) || 0;
   const kind = str(fd, "kind") === "package" ? "package" : "product";
   const name = str(fd, "name");
-  const price = num(fd, "price");
+  let price = num(fd, "price");
   if (!name) return { error: "Name is required" };
+  // Packages: simple, fixed items (package_components) or the shopper picks from a category.
+  const packageType = kind === "package" ? str(fd, "package_type") || "simple" : null;
+  let pick = null;
+  if (packageType === "pick") {
+    const categoryId = Number(fd.get("pick_category_id")) || 0;
+    const min = Math.round(num(fd, "pick_min") || 0);
+    const max = Math.round(num(fd, "pick_max") || 0);
+    if (!categoryId || !(await queryOne("SELECT id FROM categories WHERE id = ?", [categoryId]))) return { error: "Choose the category shoppers pick outfits from" };
+    if (!(min >= 1 && max >= min && max <= 10)) return { error: "Number of outfits: the fewest must be at least 1, and the most between that and 10" };
+    const prices = {};
+    for (let n = min; n <= max; n++) {
+      const v = num(fd, `pick_price_${n}`);
+      if (!(v > 0)) return { error: `Enter the price for ${n} outfits` };
+      prices[n] = v;
+    }
+    pick = { categoryId, min, max, prices };
+    price = prices[min]; // listings show "From" the lowest price
+  }
   if (price == null || !(price >= 0)) return { error: "Enter a valid price" };
   const compare = num(fd, "compare_at_price");
-  const componentIds = kind === "package" ? fd.getAll("component_ids").map(Number).filter(Boolean) : [];
+  const componentIds = packageType === "fixed" ? fd.getAll("component_ids").map(Number).filter(Boolean) : [];
   const data = {
     kind,
     name,
@@ -70,10 +88,14 @@ export async function saveProduct(_prev, fd) {
     description: sanitizeHtml(fd.get("description")) || null,
     package_items: kind === "package" ? JSON.stringify(lines(fd.get("package_items"))) : null,
     price,
-    compare_at_price: compare && compare > price ? compare : null,
+    compare_at_price: !pick && compare && compare > price ? compare : null,
     vat_inclusive: bool(fd, "vat_inclusive"),
     // Bundle packages have no size of their own: each included product has its sizes.
-    sizes: JSON.stringify(componentIds.length ? [] : csv(fd.get("sizes"))),
+    sizes: JSON.stringify(componentIds.length || pick ? [] : csv(fd.get("sizes"))),
+    pick_category_id: pick?.categoryId ?? null,
+    pick_min: pick?.min ?? null,
+    pick_max: pick?.max ?? null,
+    pick_prices: pick ? JSON.stringify(pick.prices) : null,
     stock_qty: Math.max(0, num(fd, "stock_qty") || 0),
     track_stock: bool(fd, "track_stock"),
     is_active: bool(fd, "is_active"),
@@ -148,6 +170,30 @@ export async function deleteProduct(fd) {
   }
   invalidateStore();
   redirect(fd.get("return_to") === "packages" ? "/admin/campaign" : "/admin/products");
+}
+
+/** Admin, Products: add or remove many products to/from one category. */
+export async function bulkCategory(fd) {
+  await requireAdmin();
+  const ids = [...new Set(fd.getAll("ids").map(Number).filter((n) => n > 0))].slice(0, 500);
+  const categoryId = Number(fd.get("category_id")) || 0;
+  const remove = fd.get("mode") === "remove";
+  const backRaw = String(fd.get("back") || "");
+  const back = backRaw === "/admin/products" || backRaw.startsWith("/admin/products?") ? backRaw : "/admin/products";
+  const cat = categoryId ? await queryOne("SELECT name FROM categories WHERE id = ?", [categoryId]) : null;
+  let message = "Nothing changed: tick some products and choose a category.";
+  if (cat && ids.length) {
+    if (remove) {
+      const res = await query("DELETE FROM product_categories WHERE category_id = ? AND product_id IN (?)", [categoryId, ids]);
+      message = `Removed ${res.affectedRows} product${res.affectedRows === 1 ? "" : "s"} from ${cat.name}.`;
+    } else {
+      const res = await query("INSERT IGNORE INTO product_categories (product_id, category_id) VALUES ?", [ids.map((id) => [id, categoryId])]);
+      const already = ids.length - res.affectedRows;
+      message = `Added ${res.affectedRows} product${res.affectedRows === 1 ? "" : "s"} to ${cat.name}${already ? ` (${already} already there)` : ""}.`;
+    }
+    invalidateStore();
+  }
+  redirect(`${back}${back.includes("?") ? "&" : "?"}bulk=${encodeURIComponent(message)}`);
 }
 
 export async function toggleProduct(fd) {

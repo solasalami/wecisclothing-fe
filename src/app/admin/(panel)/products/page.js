@@ -8,6 +8,8 @@ const BASE = "/admin/products";
 import { PageHeader, Badge } from "@/components/admin/Fields";
 import { toggleProduct } from "@/app/admin/actions";
 import { editProductHref } from "@/lib/admin-back";
+import { getAllCategoriesTree, flattenCategories } from "@/lib/admin-data";
+import BulkCategoryBar from "@/components/admin/BulkCategoryBar";
 
 export const metadata = { title: "Products" };
 
@@ -19,6 +21,10 @@ export default async function ProductsAdmin({ searchParams }) {
   if (sp.kind === "package" || sp.kind === "product") { where.push("p.kind = ?"); params.push(sp.kind); }
   if (sp.status === "hidden") where.push("p.is_active = 0");
   if (sp.status === "live") where.push("p.is_active = 1");
+  // Category filter: a category's own products, or products in no category at all.
+  if (sp.cat === "none") where.push("NOT EXISTS (SELECT 1 FROM product_categories pc WHERE pc.product_id = p.id)");
+  else if (Number(sp.cat) > 0) { where.push("EXISTS (SELECT 1 FROM product_categories pc WHERE pc.product_id = p.id AND pc.category_id = ?)"); params.push(Number(sp.cat)); }
+  const categories = flattenCategories(await getAllCategoriesTree());
   const dates = dateRangeSql(sp, "p.created_at");
   where.push(...dates.where);
   params.push(...dates.params);
@@ -29,7 +35,7 @@ export default async function ProductsAdmin({ searchParams }) {
   });
   const sortProps = { basePath: BASE, sp, table };
   // The list as it is now (search, filters, sort, page), for the editor's back link.
-  const listQs = new URLSearchParams(Object.entries(sp).filter(([, v]) => typeof v === "string" && v)).toString();
+  const listQs = new URLSearchParams(Object.entries(sp).filter(([k, v]) => typeof v === "string" && v && k !== "bulk")).toString();
   const listUrl = listQs ? `${BASE}?${listQs}` : BASE;
   const [{ total }] = await query(`SELECT COUNT(*) total FROM products p WHERE ${where.join(" AND ")}`, params);
   const products = await query(
@@ -49,16 +55,23 @@ export default async function ProductsAdmin({ searchParams }) {
         <input name="q" defaultValue={sp.q || ""} placeholder="Search name or SKU" className="input max-w-xs" />
         <select name="kind" defaultValue={sp.kind || ""} className="input max-w-40"><option value="">All types</option><option value="product">Products</option><option value="package">Packages</option></select>
         <select name="status" defaultValue={sp.status || ""} className="input max-w-40"><option value="">Any status</option><option value="live">Visible</option><option value="hidden">Hidden</option></select>
+        <select name="cat" defaultValue={sp.cat || ""} className="input max-w-60" aria-label="Category">
+          <option value="">Any category</option>
+          <option value="none">No category yet</option>
+          {categories.map((c) => <option key={c.id} value={c.id}>{c.path}</option>)}
+        </select>
         <DateRangeFields basePath={BASE} sp={sp} label="Added" />
         <KeepTableState table={table} />
         <button className="btn-outline !py-2">Filter</button>
       </form>
+      {sp.bulk && <p className="mb-4 border border-green-200 bg-green-50 p-3 text-sm text-green-700">{sp.bulk}</p>}
       <div className="overflow-x-auto border border-line bg-white">
         <TableToolbar basePath={BASE} sp={sp} table={table} total={Number(total)} />
+        <BulkCategoryBar categories={categories.map(({ id, path }) => ({ id, path }))} back={listUrl} />
         <table className="w-full text-left text-sm">
           <thead className="border-b border-line bg-soft text-xs uppercase text-muted">
             <tr>
-              <th className="p-3">Product</th><th>Categories</th>
+              <th className="w-8 pl-3"><span className="sr-only">Select</span></th><th className="p-3">Product</th><th>Categories</th>
               <SortHeader label="Price" column="price" {...sortProps} />
               <SortHeader label="Stock" column="stock" {...sortProps} />
               <SortHeader label="Added" column="added" {...sortProps} />
@@ -68,6 +81,9 @@ export default async function ProductsAdmin({ searchParams }) {
           <tbody>
             {products.map((p) => (
               <tr key={p.id} className="border-b border-line">
+                <td className="pl-3">
+                  <input type="checkbox" name="ids" value={p.id} form="bulk-category" aria-label={`Select ${p.name}`} />
+                </td>
                 <td className="p-3">
                   <Link href={editProductHref(p.id, listUrl)} className="flex items-center gap-3">
                     {/* eslint-disable-next-line @next/next/no-img-element */}

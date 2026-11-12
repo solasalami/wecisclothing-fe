@@ -56,7 +56,7 @@ export default function CheckoutForm({ customer, addresses = [], shipping, showr
   useEffect(() => {
     if (!ready || !lines.length) return;
     let cancelled = false;
-    quoteCart(lines.map(({ productId, size, quantity, parts }) => ({ productId, size, quantity, parts })), method).then((q) => {
+    quoteCart(lines.map(({ productId, size, quantity, parts, picks }) => ({ productId, size, quantity, parts, picks })), method).then((q) => {
       if (cancelled) return;
       setQuote(q);
       syncPrices(q.items);
@@ -85,7 +85,7 @@ export default function CheckoutForm({ customer, addresses = [], shipping, showr
     }
     const f = new FormData(e.currentTarget);
     const payload = {
-      lines: lines.map(({ productId, size, quantity, parts }) => ({ productId, size, quantity, parts })),
+      lines: lines.map(({ productId, size, quantity, parts, picks }) => ({ productId, size, quantity, parts, picks })),
       contact: {
         first_name: f.get("first_name"),
         last_name: f.get("last_name"),

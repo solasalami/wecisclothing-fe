@@ -1,4 +1,4 @@
-import { getAllCategoriesTree, getBundleCandidates } from "@/lib/admin-data";
+import { getAllCategoriesTree, getBundleCandidates, getPickCategoryOptions } from "@/lib/admin-data";
 import ProductForm from "@/components/admin/ProductForm";
 import Link from "next/link";
 import { PageHeader } from "@/components/admin/Fields";
@@ -11,7 +11,7 @@ export default async function NewProduct({ searchParams }) {
   const { kind, back: backParam } = await searchParams;
   const [categories, campaign] = await Promise.all([getAllCategoriesTree(), getSetting("campaign")]);
   const isPackage = kind === "package";
-  const bundleProducts = isPackage ? await getBundleCandidates() : [];
+  const [bundleProducts, pickCategories] = isPackage ? await Promise.all([getBundleCandidates(), getPickCategoryOptions()]) : [[], []];
   const back = productBack(backParam, isPackage ? "package" : "product");
   return (
     <div>
@@ -19,7 +19,7 @@ export default async function NewProduct({ searchParams }) {
         <span aria-hidden="true">←</span> Back to {back.label}
       </Link>
       <PageHeader title={isPackage ? `New ${campaign.name} package` : "New product"} />
-      <ProductForm categories={categories} kind={isPackage ? "package" : "product"} defaultBadge={isPackage ? campaign.package_label : ""} back={back.href} bundleProducts={bundleProducts} />
+      <ProductForm categories={categories} kind={isPackage ? "package" : "product"} defaultBadge={isPackage ? campaign.package_label : ""} back={back.href} bundleProducts={bundleProducts} pickCategories={pickCategories} />
     </div>
   );
 }

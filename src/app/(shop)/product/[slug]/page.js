@@ -8,6 +8,7 @@ import { priceVatNote } from "@/lib/vat";
 import ProductGallery from "@/components/ProductGallery";
 import AddToCart from "@/components/AddToCart";
 import BundleAddToCart from "@/components/BundleAddToCart";
+import PickBundle from "@/components/PickBundle";
 import ProductGrid from "@/components/ProductGrid";
 import { WhatsAppIcon, PhoneIcon } from "@/components/icons";
 
@@ -35,6 +36,7 @@ export default async function ProductPage({ params }) {
   const purchasable = product.in_stock && (!isPackage || packagesOk);
   const vatNote = priceVatNote(product.vat_inclusive, tax);
   const isBundle = Boolean(product.components?.length);
+  const pick = product.pick || null; // pick-your-own: choose outfits from a category
   // Bundles show what the items would cost separately ("Worth"), from compare-at or their total.
   const wasPrice = isBundle ? product.worth : product.compare_at_price;
   const onSale = wasPrice && Number(wasPrice) > Number(product.price);
@@ -100,6 +102,7 @@ export default async function ProductPage({ params }) {
           )}
           <h1 className="text-3xl md:text-4xl">{product.name}</h1>
           <p className="mt-4 text-2xl">
+            {pick && <span className="mr-2 text-base text-muted">From</span>}
             {formatNaira(product.price)}
             {onSale && (isBundle ? (
               <span className="ml-3 text-lg text-muted">
@@ -122,7 +125,21 @@ export default async function ProductPage({ params }) {
             </div>
           )}
 
-          {isBundle ? (
+          {pick ? (
+            purchasable ? (
+              <PickBundle
+                product={clientProduct}
+                pick={{
+                  min: pick.min,
+                  max: pick.max,
+                  prices: pick.prices,
+                  pool: pick.pool.map(({ id, name, slug, price, sizes, image, in_stock }) => ({ id, name, slug, price, sizes, image, in_stock })),
+                }}
+              />
+            ) : (
+              <p className="mt-6 border border-line bg-soft p-4 text-sm">This package is currently unavailable. Message us on WhatsApp to request it.</p>
+            )
+          ) : isBundle ? (
             <BundleAddToCart
               product={{ ...clientProduct, out_of_stock_items: product.out_of_stock_items }}
               components={product.components.map(({ id, name, slug, price, sizes, image, is_active }) => ({ id, name, slug, price, sizes, image, is_active }))}
