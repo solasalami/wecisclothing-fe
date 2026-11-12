@@ -230,6 +230,24 @@ ${store.name}`;
   return { subject, html: layout({ siteUrl, preheader: "Choose a new password for your account.", body, store, showrooms: [] }), text };
 }
 
+/** A message to a customer written in Admin, Customers. */
+export function customerMessageEmail({ name, subject, message, store, siteUrl }) {
+  const para = (t) => esc(t).replace(/\n/g, "<br>");
+  const body = `
+    <tr><td style="padding:32px 32px 28px;">
+      <h1 style="margin:0;font:400 28px/1.25 ${SERIF};color:${C.ink};">Hello ${esc(name)},</h1>
+      <p style="margin:14px 0 0;font:15px/1.6 ${SANS};color:${C.ink};">${para(message)}</p>
+      <p style="margin:18px 0 0;font:13px/1.6 ${SANS};color:${C.muted};">You can reply to this email if you have any questions.</p>
+    </td></tr>`;
+  const text = `Hello ${name},
+
+${message}
+
+You can reply to this email if you have any questions.
+${store.name}`;
+  return { subject, html: layout({ siteUrl, preheader: message.slice(0, 120), body, store, showrooms: [] }), text };
+}
+
 /** A reply from Admin, Messages to someone who used the Contact us form. */
 export function contactReplyEmail({ message, reply, store, siteUrl }) {
   const subject = `Re: ${message.topic} (your message to ${store.name})`;

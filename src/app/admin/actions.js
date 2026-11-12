@@ -2,6 +2,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath, updateTag } from "next/cache";
 import { STORE_TAG } from "@/lib/cache";
+import { sendCustomerEmail, setCustomerActive, customerPath } from "@/lib/customer-admin";
 import { z } from "zod";
 import { query, queryOne, transaction } from "@/lib/db";
 import { requireAdmin, requireOwner, checkPassword, hashPassword, startAdminSession, endAdminSession } from "@/lib/auth";
@@ -445,6 +446,29 @@ export async function replyToMessage(_prev, fd) {
   if (res.error) return { error: res.error };
   revalidatePath("/admin/messages");
   return { ok: `Reply sent to ${res.sentTo}${res.copiedTo ? `, copy in ${res.copiedTo}` : ""}.` };
+}
+
+// ---------------- customers ----------------
+export async function emailCustomer(_prev, fd) {
+  const admin = await requireAdmin();
+  const subject = str(fd, "subject");
+  const message = str(fd, "message");
+  if (subject.length < 2) return { error: "Please add a subject." };
+  if (subject.length > 200) return { error: "Please keep the subject under 200 characters." };
+  if (message.length < 2) return { error: "Please write your message." };
+  if (message.length > 10000) return { error: "Please keep the message under 10,000 characters." };
+  const res = await sendCustomerEmail({ email: str(fd, "email"), subject, message, admin, store: await getSetting("store") });
+  if (res.error) return { error: res.error };
+  revalidatePath(customerPath(res.sentTo));
+  return { ok: `Email sent to ${res.sentTo}${res.copiedTo ? `, copy in ${res.copiedTo}` : ""}.`, savedAt: Date.now() };
+}
+
+export async function setCustomerStatus(fd) {
+  await requireAdmin();
+  const email = str(fd, "email");
+  const active = fd.get("active") === "1";
+  await setCustomerActive(email, active);
+  redirect(`${customerPath(email)}?saved=${active ? "enabled" : "disabled"}`);
 }
 
 export async function deleteMessage(fd) {

@@ -1,6 +1,8 @@
 import { query } from "@/lib/db";
 import { formatDate, formatNaira } from "@/lib/format";
-import { PageHeader } from "@/components/admin/Fields";
+import Link from "next/link";
+import { PageHeader, Badge } from "@/components/admin/Fields";
+import { customerPath } from "@/lib/customer-admin";
 import { tableParams, dateRangeSql } from "@/lib/admin-table";
 import { SortHeader, Pagination, KeepTableState, TableToolbar, DateRangeFields } from "@/components/admin/TableControls";
 
@@ -15,7 +17,7 @@ const CUSTOMERS_SQL = `
   SELECT e.email,
     COALESCE(CONCAT(c.first_name,' ',c.last_name), o.name) name,
     COALESCE(c.phone, o.phone) phone,
-    c.created_at registered_at, c.email_verified_at,
+    c.created_at registered_at, c.email_verified_at, c.is_active,
     o.first_order, o.last_order, COALESCE(o.orders, 0) orders, COALESCE(o.spent, 0) spent,
     LEAST(COALESCE(c.created_at, o.first_order), COALESCE(o.first_order, c.created_at)) since,
     GREATEST(COALESCE(o.last_order, c.created_at), COALESCE(c.created_at, o.last_order)) last_activity
@@ -78,8 +80,11 @@ export default async function CustomersAdmin({ searchParams }) {
           <tbody>
             {rows.map((r) => (
               <tr key={r.email} className="border-b border-line align-top">
-                <td className="p-3">{r.name}</td>
-                <td><a href={`/admin/orders?q=${encodeURIComponent(r.email)}`} className="underline">{r.email}</a></td>
+                <td className="p-3">
+                  <Link href={customerPath(r.email)} className="font-medium underline">{r.name || r.email}</Link>
+                  {r.registered_at && !r.is_active && <span className="ml-2"><Badge tone="red">Disabled</Badge></span>}
+                </td>
+                <td><Link href={customerPath(r.email)} className="hover:underline">{r.email}</Link></td>
                 <td>{r.phone}</td>
                 <td className="font-medium">{day(r.since)}</td>
                 <td>

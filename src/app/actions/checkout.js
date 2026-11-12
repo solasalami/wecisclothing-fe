@@ -6,6 +6,7 @@ import { getCustomer } from "@/lib/auth";
 import { priceCart, shippingFee, orderTotal, createOrder, getOrderByNumber, orderAccessToken, checkOrderAccessToken, DELIVERY_METHODS } from "@/lib/orders";
 import { startOnlinePayment, onlinePaymentAvailable, ONLINE_METHODS } from "@/lib/payments";
 import { verifiedCustomerByEmail, hasUnverifiedAccount, rememberAddress } from "@/lib/customers";
+import { isDisabledEmail } from "@/lib/customer-admin";
 
 const lineSchema = z.object({ productId: z.coerce.number().int().positive(), size: z.string().nullable().optional(), quantity: z.coerce.number().int().min(1).max(20) });
 
@@ -64,6 +65,9 @@ export async function placeOrder(input) {
   const signedInCustomer = await getCustomer();
   if (signedInCustomer && !signedInCustomer.email_verified_at) {
     return { ok: false, error: "Please confirm your email before placing an order. Go to My account to send yourself a new confirmation link." };
+  }
+  if (!signedInCustomer && (await isDisabledEmail(data.contact.email))) {
+    return { ok: false, error: "We can't take orders for this email address. Please contact us on WhatsApp or by phone." };
   }
   if (!signedInCustomer && (await hasUnverifiedAccount(data.contact.email))) {
     return { ok: false, error: "This email belongs to a Wecis account that hasn't been confirmed yet. Sign in and confirm your email first, or use a different email." };

@@ -11,8 +11,10 @@ import { createChallenge, checkHuman } from "@/lib/captcha";
 export async function loginCustomer(_prev, formData) {
   const email = String(formData.get("email") || "").trim().toLowerCase();
   const password = String(formData.get("password") || "");
-  const c = await queryOne("SELECT id, password_hash, session_version FROM customers WHERE email = ? AND is_active = 1", [email]);
+  const c = await queryOne("SELECT id, password_hash, session_version, is_active FROM customers WHERE email = ?", [email]);
   if (!c || !(await checkPassword(password, c.password_hash))) return { error: "Incorrect email or password" };
+  // Only told after the right password, so this doesn't reveal which emails have accounts.
+  if (!c.is_active) return { error: "This account has been disabled. Please contact us if you think this is a mistake." };
   await startCustomerSession(c);
   redirect("/account");
 }

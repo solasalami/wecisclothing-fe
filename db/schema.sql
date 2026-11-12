@@ -237,3 +237,15 @@ CREATE TABLE IF NOT EXISTS contact_replies (
   KEY idx_reply_msg (message_id, created_at),
   CONSTRAINT fk_reply_msg FOREIGN KEY (message_id) REFERENCES contact_messages(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Emails sent to a customer from Admin, Customers (history on the customer page).
+CREATE TABLE IF NOT EXISTS customer_emails (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  email VARCHAR(190) NOT NULL,              -- customer email (registered or guest)
+  subject VARCHAR(200) NOT NULL,
+  body TEXT NOT NULL,
+  sent_by VARCHAR(120) NULL,
+  copied_to VARCHAR(190) NULL,              -- store mailbox Bcc'd on the email
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_cust_email (email, created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
