@@ -12,7 +12,6 @@ import { slugify } from "@/lib/format";
 import { getSetting, saveSetting } from "@/lib/settings";
 import { markOrderPaid, ORDER_STATUSES } from "@/lib/orders";
 import { queueOrderPaidEmails, sendOrderPaidEmails } from "@/lib/order-emails";
-import { RESERVED_SLUGS } from "@/lib/campaign";
 import { SIZE_MEASURES, parseRange } from "@/lib/size-guide";
 import { sendReply } from "@/lib/contact";
 
@@ -238,11 +237,9 @@ export async function saveCampaign(_prev, fd) {
 
   const name = str(fd, "name");
   const title = str(fd, "title");
-  const slug = slugify(str(fd, "slug") || name);
   const starts_at = str(fd, "starts_at");
   const ends_at = str(fd, "ends_at");
   if (!name || !title) return { error: "Campaign name and title are required" };
-  if (!slug || RESERVED_SLUGS.has(slug)) return { error: `"${slug}" can't be used as the page URL. Please choose another` };
   if ([starts_at, ends_at].some((d) => d && !DATE_RE.test(d))) return { error: "Dates must be valid" };
   if (starts_at && ends_at && ends_at < starts_at) return { error: "End date must be on or after the start date" };
 
@@ -267,17 +264,13 @@ export async function saveCampaign(_prev, fd) {
   if (fd.get("remove_home_image") === "on") homeImage = "";
   if (fd.get("remove_home_image_mobile") === "on") homeImageMobile = "";
 
-  // Remember old URLs so links/ads to the previous slug keep working.
-  const previous = new Set(current.previous_slugs || []);
-  if (current.slug && current.slug !== slug) previous.add(current.slug);
-  previous.delete(slug);
-
   await saveSetting("campaign", {
     ...current,
     enabled: !!bool(fd, "enabled"),
     name,
-    slug,
-    previous_slugs: [...previous].slice(-10),
+    // The page always lives at /promos. slug and previous_slugs stay as stored (spread above)
+    // so old seasonal addresses keep redirecting there.
+    menu_label: str(fd, "menu_label").slice(0, 40),
     starts_at,
     ends_at,
     hide_after_end: !!bool(fd, "hide_after_end"),

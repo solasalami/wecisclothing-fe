@@ -1,6 +1,6 @@
 import { query } from "@/lib/db";
 import { getSetting } from "@/lib/settings";
-import { isCampaignLive } from "@/lib/campaign";
+import { isCampaignLive, campaignPath } from "@/lib/campaign";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +14,7 @@ export default async function sitemap() {
   ]);
   return [
     { url: `${base}/`, changeFrequency: "daily", priority: 1 },
-    ...(isCampaignLive(campaign) ? [{ url: `${base}/${campaign.slug}`, changeFrequency: "daily", priority: 0.9 }] : []),
+    ...(isCampaignLive(campaign) ? [{ url: `${base}${campaignPath(campaign)}`, changeFrequency: "daily", priority: 0.9 }] : []),
     { url: `${base}/shop`, changeFrequency: "daily", priority: 0.8 },
     { url: `${base}/contact`, priority: 0.6 },
     { url: `${base}/contact-us`, priority: 0.5 },

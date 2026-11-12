@@ -3,7 +3,7 @@ import Link from "next/link";
 import { editProductHref } from "@/lib/admin-back";
 import { query } from "@/lib/db";
 import { getSetting } from "@/lib/settings";
-import { campaignStatus } from "@/lib/campaign";
+import { campaignStatus, PROMOS_PATH, campaignMenuLabel } from "@/lib/campaign";
 import { formatNaira } from "@/lib/format";
 import { ActionForm, SubmitButton } from "@/components/admin/Form";
 import { Field, TextArea, Check, Card, PageHeader, Badge } from "@/components/admin/Fields";
@@ -33,7 +33,7 @@ export default async function CampaignAdmin({ searchParams }) {
   return (
     <div className="space-y-8">
       <PageHeader title="Seasonal campaign">
-        <Link href={`/${c.slug}`} target="_blank" className="btn-outline">{status === "live" ? "View page" : "Preview page"}</Link>
+        <Link href={PROMOS_PATH} target="_blank" className="btn-outline">{status === "live" ? "View page" : "Preview page"}</Link>
         <Link href="/admin/products/new?kind=package&back=%2Fadmin%2Fcampaign" className="btn-primary">+ New package</Link>
       </PageHeader>
       {saved && <p className="border border-green-200 bg-green-50 p-3 text-sm text-green-700">Campaign saved.</p>}
@@ -41,7 +41,7 @@ export default async function CampaignAdmin({ searchParams }) {
       <Card title="Status">
         <div className="flex flex-wrap items-center gap-3 text-sm">
           <Badge tone={tone}>{label}</Badge>
-          <span><strong>{c.name}</strong> at <code className="bg-soft px-1">/{c.slug}</code></span>
+          <span><strong>{c.name}</strong> at <code className="bg-soft px-1">{PROMOS_PATH}</code>, shown in the menu as &ldquo;{campaignMenuLabel(c)}&rdquo;</span>
           <span className="text-muted">
             {c.starts_at ? `from ${c.starts_at}` : "from now"} {c.ends_at ? `until ${c.ends_at}` : "with no end date"}
             {c.ends_at && (c.hide_after_end ? " (hides automatically after)" : " (stays up after)")}
@@ -89,11 +89,14 @@ export default async function CampaignAdmin({ searchParams }) {
         <Card title="Campaign & schedule">
           <Check label="Campaign switched on" name="enabled" defaultChecked={c.enabled} hint="Master switch. Off = hidden regardless of dates." />
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Campaign name" name="name" defaultValue={c.name} required hint="Used in the menu, footer and labels, e.g. Detty December, Eid Collection." />
-            <Field label="Page URL" name="slug" defaultValue={c.slug} required hint={`wecisclothing.com/${c.slug}. Old URLs redirect automatically.`} />
+            <Field label="Campaign name" name="name" defaultValue={c.name} required hint="Used on the page, badges and in admin, e.g. Detty December, Eid Collection." />
+            <Field label="Menu label" name="menu_label" defaultValue={c.menu_label} placeholder="Promos" maxLength={40} hint="Shown in the shop menu and footer. Blank = Promos." />
             <Field label="Start date" name="starts_at" type="date" defaultValue={c.starts_at} hint="Lagos time. Blank = immediately." />
             <Field label="End date" name="ends_at" type="date" defaultValue={c.ends_at} hint="Lagos time. Blank = no end." />
           </div>
+          <p className="text-xs text-muted">
+            Page address: <strong>wecisclothing.com{PROMOS_PATH}</strong>, the same for every campaign, so ads and printed links never need changing. Older addresses (e.g. /detty-december) redirect there.
+          </p>
           <Check label="Hide everything automatically after the end date" name="hide_after_end" defaultChecked={c.hide_after_end} />
           <Check label="Show countdown to the end date" name="show_countdown" defaultChecked={c.show_countdown} />
           <Check label="Hide packages from the shop (and stop sales) when the campaign isn't live" name="hide_packages_when_off" defaultChecked={c.hide_packages_when_off} />
@@ -185,7 +188,7 @@ export default async function CampaignAdmin({ searchParams }) {
             name="home_packages_cta"
             defaultValue={c.home_packages_cta}
             placeholder="Explore packages"
-            hint={`Links to /${c.slug}. Leave blank to hide the button.`}
+            hint={`Links to ${PROMOS_PATH}. Leave blank to hide the button.`}
           />
         </Card>
 

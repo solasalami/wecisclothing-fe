@@ -5,7 +5,7 @@ const LAGOS_OFFSET = "+01:00";
 
 export const RESERVED_SLUGS = new Set([
   "shop", "category", "product", "cart", "checkout", "account", "contact", "contact-us", "pages", "size-guide",
-  "index.php", "maintenance",
+  "index.php", "maintenance", "promos",
   "admin", "api", "media", "sitemap.xml", "robots.txt", "icon.png", "_next", "favicon.ico",
 ]);
 
@@ -34,9 +34,14 @@ export function campaignStatus(c, now = Date.now()) {
 
 export const isCampaignLive = (c, now) => campaignStatus(c, now) === "live";
 
-export function campaignPath(c) {
-  return `/${c.slug}`;
-}
+// Every campaign uses this one permanent address; old seasonal addresses redirect to it.
+export const PROMOS_PATH = "/promos";
+
+/** Address of the campaign landing page (the same for every campaign). */
+export const campaignPath = () => PROMOS_PATH;
+
+/** Shop menu and footer text for the campaign link (Admin, Seasonal campaign, Menu label). */
+export const campaignMenuLabel = (c) => String(c?.menu_label || "").trim() || "Promos";
 
 /** End timestamp for the countdown, or null if there shouldn't be one. */
 export function countdownEnd(c, now = Date.now()) {

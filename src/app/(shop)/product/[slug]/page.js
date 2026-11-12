@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getProductBySlug, getRelatedProducts, packagesAvailable } from "@/lib/catalog";
-import { isCampaignLive } from "@/lib/campaign";
+import { isCampaignLive, campaignPath } from "@/lib/campaign";
 import { getSettings } from "@/lib/settings";
 import { formatNaira, whatsappLink, telLink, stripHtml } from "@/lib/format";
 import { priceVatNote } from "@/lib/vat";
@@ -87,7 +87,7 @@ export default async function ProductPage({ params }) {
 
         <div>
           {isPackage && campaignLive && (
-            <Link href={`/${campaign.slug}`} className="mb-3 inline-block bg-gold px-3 py-1 text-xs uppercase tracking-[0.12em] text-white">
+            <Link href={campaignPath(campaign)} className="mb-3 inline-block bg-gold px-3 py-1 text-xs uppercase tracking-[0.12em] text-white">
               {campaign.name} · {campaign.package_label}
             </Link>
           )}

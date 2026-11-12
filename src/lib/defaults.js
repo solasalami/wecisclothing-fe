@@ -37,9 +37,10 @@ export const DEFAULT_SETTINGS = {
   campaign: {
     // Seasonal campaign (Detty December, Eid, Valentine's…). Fully editable in Admin → Seasonal campaign.
     enabled: true,
-    name: "Detty December", // menu label + used across the site
-    slug: "detty-december", // public URL: /detty-december
-    previous_slugs: [], // old URLs that redirect to the current one
+    name: "Detty December", // used on the page, badges and admin
+    menu_label: "Promos", // shop menu + footer link text; blank = "Promos"
+    slug: "detty-december", // legacy: the page now always lives at /promos; this redirects there
+    previous_slugs: [], // older addresses that also redirect to /promos
     starts_at: "2026-11-01", // YYYY-MM-DD (Lagos time); blank = immediately
     ends_at: "2026-12-31", // YYYY-MM-DD (Lagos time); blank = no end
     hide_after_end: true, // switch everything off automatically after ends_at

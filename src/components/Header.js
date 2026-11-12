@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useCart } from "./CartProvider";
 import { BagIcon, MenuIcon, CloseIcon, UserIcon, SearchIcon, PhoneIcon, WhatsAppIcon } from "./icons";
 import { telLink, whatsappLink } from "@/lib/format";
-import { isCampaignLive } from "@/lib/campaign";
+import { isCampaignLive, campaignPath, campaignMenuLabel } from "@/lib/campaign";
 import Marquee from "./Marquee";
 
 export default function Header({ categories, store, campaign, account }) {
@@ -20,7 +20,7 @@ export default function Header({ categories, store, campaign, account }) {
 
   const nav = [
     ...categories.filter((c) => c.show_in_menu).map((c) => ({ href: `/category/${c.slug}`, label: c.name, children: c.children.filter((x) => x.show_in_menu && x.count > 0) })),
-    ...(campaignLive ? [{ href: `/${campaign.slug}`, label: campaign.name, festive: true, children: [] }] : []),
+    ...(campaignLive ? [{ href: campaignPath(campaign), label: campaignMenuLabel(campaign), festive: true, children: [] }] : []),
     { href: "/shop", label: "Shop All", children: [] },
     { href: "/contact", label: "Showrooms", children: [] },
     { href: "/contact-us", label: "Contact Us", children: [] },
@@ -54,7 +54,7 @@ export default function Header({ categories, store, campaign, account }) {
             </a>
           </div>
           {campaignLive && campaign.show_announcement && campaign.announcement ? (
-            <Marquee href={`/${campaign.slug}`} className="mx-2 min-w-0 flex-1 font-medium hover:text-gold-dark">
+            <Marquee href={campaignPath(campaign)} className="mx-2 min-w-0 flex-1 font-medium hover:text-gold-dark">
               <span className="mr-2 text-gold-dark">✦</span>
               {campaign.announcement}
               <span className="ml-2 underline underline-offset-2">Shop now</span>

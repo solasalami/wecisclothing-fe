@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
+import { campaignPath } from "@/lib/campaign";
 
 /**
  * Homepage promotion block for the seasonal campaign (Admin → Seasonal campaign → Homepage section).
@@ -7,7 +8,7 @@ import Image from "next/image";
  * - Without one: the champagne text placeholder (eyebrow, title, sub-heading, gold button).
  */
 export default function CampaignPromo({ campaign }) {
-  const href = `/${campaign.slug}`;
+  const href = campaignPath(campaign);
   const title = campaign.home_title || campaign.title;
   const subtitle = campaign.home_subtitle || campaign.subtitle;
   const cta = campaign.home_cta || `Shop ${campaign.name}`;

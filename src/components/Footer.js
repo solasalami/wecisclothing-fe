@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { telLink, whatsappLink } from "@/lib/format";
+import { campaignPath, campaignMenuLabel } from "@/lib/campaign";
 import { PinIcon, PhoneIcon, MailIcon, WhatsAppIcon, ClockIcon, InstagramIcon, FacebookIcon, TikTokIcon } from "./icons";
 
 const SOCIALS = [
@@ -66,7 +67,7 @@ export default function Footer({ store, showrooms, categories, pages, campaign }
                 <Link href={`/category/${c.slug}`} className="hover:text-gold">{c.name}</Link>
               </li>
             ))}
-            {campaign && <li><Link href={`/${campaign.slug}`} className="hover:text-gold">{campaign.name}</Link></li>}
+            {campaign && <li><Link href={campaignPath(campaign)} className="hover:text-gold">{campaignMenuLabel(campaign)}</Link></li>}
             <li><Link href="/shop" className="hover:text-gold">All products</Link></li>
           </ul>
         </div>

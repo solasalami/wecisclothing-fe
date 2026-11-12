@@ -7,7 +7,7 @@ import ProductCard from "@/components/ProductCard";
 import ProductCarousel, { CarouselItem } from "@/components/ProductCarousel";
 import HeroSlider from "@/components/HeroSlider";
 import ShowroomCards from "@/components/ShowroomCards";
-import { isCampaignLive } from "@/lib/campaign";
+import { isCampaignLive, campaignPath } from "@/lib/campaign";
 import CampaignPromo from "@/components/CampaignPromo";
 
 export default async function HomePage() {
@@ -49,7 +49,7 @@ export default async function HomePage() {
               <ProductGrid products={packages.items} />
               {campaign.home_packages_cta && (
                 <div className="mt-10 text-center">
-                  <Link href={`/${campaign.slug}`} className="btn-primary" data-track-location="home_packages">
+                  <Link href={campaignPath(campaign)} className="btn-primary" data-track-location="home_packages">
                     {campaign.home_packages_cta}
                   </Link>
                 </div>
