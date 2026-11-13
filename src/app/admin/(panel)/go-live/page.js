@@ -10,8 +10,9 @@ export default async function GoLivePage() {
     <div className="space-y-4">
       <PageHeader title="Go-live checklist" />
       <p className="max-w-3xl text-sm text-muted">
-        Everything to confirm before launching the store. Automatic items are re-checked each time you open this page; tick off the
-        manual steps as the team completes them. The same list is in docs/GO-LIVE.md.
+        Everything to confirm before launching the store. Automatic items are
+        re-checked each time you open this page; tick off the manual steps as
+        the team completes them.
       </p>
       <GoLiveChecklist settings={settings} />
     </div>

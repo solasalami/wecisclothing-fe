@@ -172,6 +172,32 @@ export async function deleteProduct(fd) {
   redirect(fd.get("return_to") === "packages" ? "/admin/campaign" : "/admin/products");
 }
 
+/**
+ * Admin, Products: put one product in, or take it out of, a package.
+ * Fixed bundle: an included item (added last). Pick-your-own: a link to the bundle's category.
+ */
+export async function setProductInPackage(productId, packageId, include) {
+  await requireAdmin();
+  const product = await queryOne("SELECT id FROM products WHERE id = ? AND kind = 'product'", [Number(productId)]);
+  const pkg = await queryOne("SELECT id, name, pick_category_id FROM products WHERE id = ? AND kind = 'package'", [Number(packageId)]);
+  if (!product || !pkg) return { error: "That product or package no longer exists." };
+  if (pkg.pick_category_id) {
+    if (include) await query("INSERT IGNORE INTO product_categories (product_id, category_id) VALUES (?,?)", [product.id, pkg.pick_category_id]);
+    else await query("DELETE FROM product_categories WHERE product_id = ? AND category_id = ?", [product.id, pkg.pick_category_id]);
+  } else if (include) {
+    await query(
+      `INSERT IGNORE INTO package_components (package_id, product_id, sort_order)
+       SELECT ?, ?, COALESCE(MAX(sort_order), -1) + 1 FROM package_components WHERE package_id = ?`,
+      [pkg.id, product.id, pkg.id]
+    );
+  } else {
+    await query("DELETE FROM package_components WHERE package_id = ? AND product_id = ?", [pkg.id, product.id]);
+  }
+  invalidateStore();
+  revalidatePath("/admin/products");
+  return { ok: true };
+}
+
 /** Admin, Products: add or remove many products to/from one category. */
 export async function bulkCategory(fd) {
   await requireAdmin();

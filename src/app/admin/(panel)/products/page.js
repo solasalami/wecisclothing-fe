@@ -10,6 +10,7 @@ import { toggleProduct } from "@/app/admin/actions";
 import { editProductHref } from "@/lib/admin-back";
 import { getAllCategoriesTree, flattenCategories } from "@/lib/admin-data";
 import BulkCategoryBar from "@/components/admin/BulkCategoryBar";
+import PackageMultiSelect from "@/components/admin/PackageMultiSelect";
 
 export const metadata = { title: "Products" };
 
@@ -41,10 +42,31 @@ export default async function ProductsAdmin({ searchParams }) {
   const products = await query(
     `SELECT p.id, p.name, p.kind, p.sku, p.price, p.is_active, p.is_featured, p.track_stock, p.stock_qty, p.created_at,
       (SELECT url FROM product_images i WHERE i.product_id = p.id ORDER BY sort_order, id LIMIT 1) image,
-      (SELECT GROUP_CONCAT(c.name SEPARATOR ', ') FROM product_categories pc JOIN categories c ON c.id = pc.category_id WHERE pc.product_id = p.id) cats
+      (SELECT GROUP_CONCAT(c.name SEPARATOR ', ') FROM product_categories pc JOIN categories c ON c.id = pc.category_id WHERE pc.product_id = p.id) cats,
+      (SELECT GROUP_CONCAT(pc.category_id) FROM product_categories pc WHERE pc.product_id = p.id) cat_ids
      FROM products p WHERE ${where.join(" AND ")} ORDER BY ${table.orderBy} LIMIT ? OFFSET ?`,
     [...params, table.per, table.offset]
   );
+  // Packages each product on this page is in: fixed bundles by their items, pick-your-own
+  // bundles by their collection category (a product in a sub-category counts too).
+  const packages = (
+    await query(
+      `SELECT p.id, p.name, p.pick_category_id, (SELECT COUNT(*) FROM package_components pc WHERE pc.package_id = p.id) AS items
+       FROM products p WHERE p.kind = 'package' ORDER BY p.is_active DESC, p.name`
+    )
+  ).map((pk) => {
+    const cat = pk.pick_category_id ? categories.find((c) => c.id === pk.pick_category_id) : null;
+    return { id: pk.id, name: pk.name, pick: cat ? cat.name : null, simple: !cat && !Number(pk.items), pool: cat ? new Set([cat.id, ...cat.descendantIds]) : null };
+  });
+  const pageIds = products.filter((p) => p.kind === "product").map((p) => p.id);
+  const items = pageIds.length ? await query("SELECT package_id, product_id FROM package_components WHERE product_id IN (?)", [pageIds]) : [];
+  const inPackages = (p) => {
+    const catIds = String(p.cat_ids || "").split(",").map(Number).filter(Boolean);
+    return packages
+      .filter((pk) => (pk.pool ? catIds.some((id) => pk.pool.has(id)) : items.some((it) => it.package_id === pk.id && it.product_id === p.id)))
+      .map((pk) => pk.id);
+  };
+  const packageOptions = packages.map(({ id, name, pick, simple }) => ({ id, name, pick, simple }));
   return (
     <div>
       <PageHeader title="Products">
@@ -71,7 +93,7 @@ export default async function ProductsAdmin({ searchParams }) {
         <table className="w-full text-left text-sm">
           <thead className="border-b border-line bg-soft text-xs uppercase text-muted">
             <tr>
-              <th className="w-8 pl-3"><span className="sr-only">Select</span></th><th className="p-3">Product</th><th>Categories</th>
+              <th className="w-8 pl-3"><span className="sr-only">Select</span></th><th className="p-3">Product</th><th>Categories</th><th>Packages</th>
               <SortHeader label="Price" column="price" {...sortProps} />
               <SortHeader label="Stock" column="stock" {...sortProps} />
               <SortHeader label="Added" column="added" {...sortProps} />
@@ -95,6 +117,13 @@ export default async function ProductsAdmin({ searchParams }) {
                   </Link>
                 </td>
                 <td className="max-w-48 text-xs text-muted">{p.cats}</td>
+                <td className="pr-3">
+                  {p.kind === "product" ? (
+                    <PackageMultiSelect productId={p.id} productName={p.name} packages={packageOptions} selected={inPackages(p)} />
+                  ) : (
+                    <span className="text-xs text-muted">-</span>
+                  )}
+                </td>
                 <td>{formatNaira(p.price)}</td>
                 <td>{p.track_stock ? p.stock_qty : <span className="text-muted">-</span>}</td>
                 <td className="whitespace-nowrap">{formatDate(p.created_at, { dateOnly: true })}</td>
