@@ -62,7 +62,7 @@ export default function PackageMultiSelect({ productId, productName, packages, s
                   <span>
                     {p.name}
                     <span className="block text-xs text-muted">
-                      {p.pick ? `Pick-your-own: adds it to ${p.pick}` : p.simple ? "Simple package: adding an item makes it a fixed bundle" : "Fixed bundle: adds it as an item"}
+                      {p.pick ? "Pick-your-own: adds it to the outfits shoppers choose from" : p.simple ? "Simple package: adding an item makes it a fixed bundle" : "Fixed bundle: adds it as an item"}
                     </span>
                   </span>
                 </label>

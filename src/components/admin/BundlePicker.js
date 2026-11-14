@@ -7,7 +7,8 @@ import { formatNaira } from "@/lib/format";
  * size for each one; the bundle sells as one line at the package price.
  * `products`: every normal product [{ id, name, price, sizes, image, is_active }].
  */
-export default function BundlePicker({ products, initial = [] }) {
+// mode: "fixed" (every item is in the bundle) or "pick" (the list shoppers choose from).
+export default function BundlePicker({ products, initial = [], mode = "fixed" }) {
   const byId = useMemo(() => new Map(products.map((p) => [p.id, p])), [products]);
   const [ids, setIds] = useState(() => initial.filter((id) => byId.has(id)));
   const [search, setSearch] = useState("");
@@ -53,10 +54,12 @@ export default function BundlePicker({ products, initial = [] }) {
         </ul>
       ) : (
         <p className="border border-dashed border-line p-3 text-sm text-muted">
-          No products added. Without products this is a simple package: one item with the &ldquo;What&apos;s included&rdquo; list below.
+          {mode === "pick"
+            ? "No outfits listed yet. Add them here, or from Admin, Products (the Packages column on each product)."
+            : "No products added. Without products this is a simple package: one item with the \u201cWhat\u2019s included\u201d list below."}
         </p>
       )}
-      {picked.length > 0 && (
+      {picked.length > 0 && mode === "fixed" && (
         <p className="text-sm">
           Items worth <strong>{formatNaira(worth)}</strong> if bought separately. Set the package price below this to show shoppers the saving.
         </p>
@@ -98,7 +101,11 @@ export default function BundlePicker({ products, initial = [] }) {
         )}
         {q && !matches.length && <p className="mt-1 text-xs text-muted">No matching products.</p>}
       </div>
-      <p className="text-xs text-muted">Shoppers choose a size for each item. Products hidden from the shop can still be part of a package.</p>
+      <p className="text-xs text-muted">
+        {mode === "pick"
+          ? `${picked.length} outfit${picked.length === 1 ? "" : "s"} listed. Shoppers choose from these and pick a size for each. Products hidden from the shop can still be listed.`
+          : "Shoppers choose a size for each item. Products hidden from the shop can still be part of a package."}
+      </p>
     </div>
   );
 }

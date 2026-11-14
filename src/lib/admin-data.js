@@ -33,8 +33,8 @@ export async function getProductForEdit(id) {
   p.package_items = parseJson(p.package_items, []);
   p.images = await query("SELECT id, url FROM product_images WHERE product_id = ? ORDER BY sort_order, id", [id]);
   p.categoryIds = (await query("SELECT category_id FROM product_categories WHERE product_id = ?", [id])).map((r) => r.category_id);
-  p.pick = p.pick_category_id
-    ? { categoryId: p.pick_category_id, min: p.pick_min, max: p.pick_max, prices: parseJson(p.pick_prices, {}) || {} }
+  p.pick = p.pick_min != null
+    ? { categoryId: p.pick_category_id || null, min: p.pick_min, max: p.pick_max, prices: parseJson(p.pick_prices, {}) || {} }
     : null;
   p.componentIds = p.kind === "package"
     ? (await query("SELECT product_id FROM package_components WHERE package_id = ? ORDER BY sort_order, id", [id])).map((r) => r.product_id)

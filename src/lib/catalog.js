@@ -38,9 +38,9 @@ function hydrate(p) {
     // A bundle is in stock only if every included product is too.
     in_stock: (!p.track_stock || p.stock_qty > 0) && !(p.components || []).some((c) => !c.in_stock),
     // A bundle package is made of real products (the shopper picks a size for each).
-    is_bundle: p.kind === "package" && Number(p.component_count ?? (p.components?.length || 0)) > 0,
+    is_bundle: p.kind === "package" && p.pick_min == null && Number(p.component_count ?? (p.components?.length || 0)) > 0,
     // Pick-your-own: the shopper chooses outfits from a category ("From" the lowest price).
-    is_pick_bundle: p.kind === "package" && Boolean(p.pick_category_id),
+    is_pick_bundle: p.kind === "package" && p.pick_min != null,
   };
 }
 
@@ -149,8 +149,7 @@ async function loadProductBySlug(slug) {
   );
   const rules = p.kind === "package" ? pickRules(p) : null;
   if (rules) {
-    const cat = await queryOne("SELECT name FROM categories WHERE id = ?", [rules.categoryId]);
-    p.pick = { ...rules, categoryName: cat?.name || "", pool: await getPickPool(rules.categoryId) };
+    p.pick = { ...rules, pool: await getPickPool(rules) };
     p.sizes = "[]";
   } else if (p.kind === "package") {
     const components = (await getComponents([p.id])).get(p.id) || [];

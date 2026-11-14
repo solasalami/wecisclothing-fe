@@ -51,11 +51,11 @@ export async function priceCart(lines) {
   const byId = new Map(products.map((p) => [p.id, p]));
   const bundles = await getComponents(products.filter((p) => p.is_bundle).map((p) => p.id));
   const packagesOk = await packagesAvailable();
-  // Pick-your-own bundles: each one's pool of outfits, by category.
+  // Pick-your-own bundles: each one's pool of outfits.
   const pools = new Map();
   for (const p of products) {
     const rules = p.is_pick_bundle ? pickRules(p) : null;
-    if (rules && !pools.has(rules.categoryId)) pools.set(rules.categoryId, new Map((await getPickPool(rules.categoryId, { limit: 500 })).map((o) => [o.id, o])));
+    if (rules) pools.set(p.id, new Map((await getPickPool(rules, { limit: 1000 })).map((o) => [o.id, o])));
   }
   const items = [];
   const problems = [];
@@ -86,7 +86,7 @@ export async function priceCart(lines) {
         problems.push(`Please choose ${rules.min === rules.max ? rules.min : `${rules.min} to ${rules.max}`} outfits for ${p.name}.`);
         continue;
       }
-      const pool = pools.get(rules.categoryId);
+      const pool = pools.get(p.id);
       const chosen = picks.map((x) => ({ outfit: pool.get(x.productId), size: x.size }));
       const bad = chosen.find(({ outfit, size }) => !outfit || (outfit.sizes.length ? !outfit.sizes.includes(size || "") : size));
       if (bad) {

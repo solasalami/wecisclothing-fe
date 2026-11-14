@@ -47,23 +47,24 @@ export default async function ProductsAdmin({ searchParams }) {
      FROM products p WHERE ${where.join(" AND ")} ORDER BY ${table.orderBy} LIMIT ? OFFSET ?`,
     [...params, table.per, table.offset]
   );
-  // Packages each product on this page is in: fixed bundles by their items, pick-your-own
-  // bundles by their collection category (a product in a sub-category counts too).
+  // Packages each product on this page is in: on the package's product list, or (pick-your-own
+  // with a category) in that category or a sub-category.
   const packages = (
     await query(
-      `SELECT p.id, p.name, p.pick_category_id, (SELECT COUNT(*) FROM package_components pc WHERE pc.package_id = p.id) AS items
+      `SELECT p.id, p.name, p.pick_category_id, p.pick_min, (SELECT COUNT(*) FROM package_components pc WHERE pc.package_id = p.id) AS items
        FROM products p WHERE p.kind = 'package' ORDER BY p.is_active DESC, p.name`
     )
   ).map((pk) => {
-    const cat = pk.pick_category_id ? categories.find((c) => c.id === pk.pick_category_id) : null;
-    return { id: pk.id, name: pk.name, pick: cat ? cat.name : null, simple: !cat && !Number(pk.items), pool: cat ? new Set([cat.id, ...cat.descendantIds]) : null };
+    const isPick = pk.pick_min != null;
+    const cat = isPick && pk.pick_category_id ? categories.find((c) => c.id === pk.pick_category_id) : null;
+    return { id: pk.id, name: pk.name, pick: isPick, simple: !isPick && !Number(pk.items), pool: cat ? new Set([cat.id, ...cat.descendantIds]) : null };
   });
   const pageIds = products.filter((p) => p.kind === "product").map((p) => p.id);
   const items = pageIds.length ? await query("SELECT package_id, product_id FROM package_components WHERE product_id IN (?)", [pageIds]) : [];
   const inPackages = (p) => {
     const catIds = String(p.cat_ids || "").split(",").map(Number).filter(Boolean);
     return packages
-      .filter((pk) => (pk.pool ? catIds.some((id) => pk.pool.has(id)) : items.some((it) => it.package_id === pk.id && it.product_id === p.id)))
+      .filter((pk) => items.some((it) => it.package_id === pk.id && it.product_id === p.id) || (pk.pool && catIds.some((id) => pk.pool.has(id))))
       .map((pk) => pk.id);
   };
   const packageOptions = packages.map(({ id, name, pick, simple }) => ({ id, name, pick, simple }));

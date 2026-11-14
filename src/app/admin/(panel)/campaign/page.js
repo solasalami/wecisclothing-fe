@@ -5,7 +5,7 @@ import { query } from "@/lib/db";
 import { getSetting } from "@/lib/settings";
 import { campaignStatus, PROMOS_PATH, campaignMenuLabel } from "@/lib/campaign";
 import { formatNaira } from "@/lib/format";
-import { pickPoolSize } from "@/lib/bundles";
+import { pickPoolSize, pickRules } from "@/lib/bundles";
 import { ActionForm, SubmitButton } from "@/components/admin/Form";
 import { Field, TextArea, Check, Card, PageHeader, Badge } from "@/components/admin/Fields";
 import RichText from "@/components/admin/RichText";
@@ -25,7 +25,7 @@ export default async function CampaignAdmin({ searchParams }) {
   const { saved } = await searchParams;
   const [c, packages] = await Promise.all([
     getSetting("campaign"),
-    query(`SELECT p.id, p.name, p.price, p.is_active, p.pick_category_id, p.pick_min, p.pick_max, c.name AS pick_category,
+    query(`SELECT p.id, p.name, p.price, p.is_active, p.pick_category_id, p.pick_min, p.pick_max, p.pick_prices, c.name AS pick_category,
              (SELECT url FROM product_images i WHERE i.product_id = p.id ORDER BY sort_order, id LIMIT 1) image,
              (SELECT COUNT(*) FROM package_components pc WHERE pc.package_id = p.id) AS component_count
            FROM products p LEFT JOIN categories c ON c.id = p.pick_category_id
@@ -33,7 +33,7 @@ export default async function CampaignAdmin({ searchParams }) {
   ]);
   // Pick-your-own packages: how many outfits each can draw on.
   const poolSizes = Object.fromEntries(
-    await Promise.all(packages.filter((p) => p.pick_category_id).map(async (p) => [p.id, await pickPoolSize(p.pick_category_id)]))
+    await Promise.all(packages.filter((p) => p.pick_min != null).map(async (p) => [p.id, await pickPoolSize(pickRules(p))]))
   );
   const status = campaignStatus(c);
   const [tone, label] = STATUS[status];
@@ -63,7 +63,7 @@ export default async function CampaignAdmin({ searchParams }) {
 
       <Card title={`Packages (${packages.length})`}>
         <p className="text-sm text-muted">
-          A package is a fixed bundle of real products (the shopper picks a size for each), a pick-your-own bundle (the shopper chooses a number of outfits from a category), or a single item with a list of “what’s included”. Packages appear on the promo page{c.hide_packages_when_off ? " and are hidden from the shop outside the campaign dates" : ""}.
+          A package is a fixed bundle of real products (the shopper picks a size for each), a pick-your-own bundle (the shopper chooses a number of outfits from a list), or a single item with a list of “what’s included”. Packages appear on the promo page{c.hide_packages_when_off ? " and are hidden from the shop outside the campaign dates" : ""}.
           Unpublish last season’s packages before starting a new campaign.
         </p>
         {packages.length === 0 ? (
@@ -78,10 +78,10 @@ export default async function CampaignAdmin({ searchParams }) {
                 </Link>
                 <div className="space-y-1 p-3 text-sm">
                   <Link href={editProductHref(p.id, "/admin/campaign")} className="font-medium underline">{p.name}</Link>
-                  <p>{p.pick_category_id ? `From ${formatNaira(p.price)}` : formatNaira(p.price)}</p>
+                  <p>{p.pick_min != null ? `From ${formatNaira(p.price)}` : formatNaira(p.price)}</p>
                   <p className="text-xs text-muted">
-                    {p.pick_category_id
-                      ? `Pick ${p.pick_min === p.pick_max ? p.pick_min : `${p.pick_min} to ${p.pick_max}`} from ${p.pick_category || "a deleted category"} (${poolSizes[p.id] ?? 0} outfits)`
+                    {p.pick_min != null
+                      ? `Pick ${p.pick_min === p.pick_max ? p.pick_min : `${p.pick_min} to ${p.pick_max}`} from ${poolSizes[p.id] ?? 0} outfits${p.pick_category ? ` (incl. ${p.pick_category})` : ""}`
                       : Number(p.component_count) > 0
                         ? `Fixed bundle of ${p.component_count} items`
                         : "Simple package"}

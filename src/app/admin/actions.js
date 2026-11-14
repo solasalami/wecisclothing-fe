@@ -58,14 +58,17 @@ export async function saveProduct(_prev, fd) {
   const name = str(fd, "name");
   let price = num(fd, "price");
   if (!name) return { error: "Name is required" };
-  // Packages: simple, fixed items (package_components) or the shopper picks from a category.
+  // Packages: simple, fixed items, or the shopper picks from a list. Fixed and pick both keep
+  // their products in package_components; a pick list can also take in a whole category.
   const packageType = kind === "package" ? str(fd, "package_type") || "simple" : null;
+  const componentIds = packageType === "fixed" || packageType === "pick" ? fd.getAll("component_ids").map(Number).filter(Boolean) : [];
   let pick = null;
   if (packageType === "pick") {
-    const categoryId = Number(fd.get("pick_category_id")) || 0;
+    const categoryId = Number(fd.get("pick_category_id")) || null;
     const min = Math.round(num(fd, "pick_min") || 0);
     const max = Math.round(num(fd, "pick_max") || 0);
-    if (!categoryId || !(await queryOne("SELECT id FROM categories WHERE id = ?", [categoryId]))) return { error: "Choose the category shoppers pick outfits from" };
+    if (categoryId && !(await queryOne("SELECT id FROM categories WHERE id = ?", [categoryId]))) return { error: "That category no longer exists. Choose another or none." };
+    if (!componentIds.length && !categoryId) return { error: "Add the outfits shoppers can choose from, or choose a category" };
     if (!(min >= 1 && max >= min && max <= 10)) return { error: "Number of outfits: the fewest must be at least 1, and the most between that and 10" };
     const prices = {};
     for (let n = min; n <= max; n++) {
@@ -78,7 +81,6 @@ export async function saveProduct(_prev, fd) {
   }
   if (price == null || !(price >= 0)) return { error: "Enter a valid price" };
   const compare = num(fd, "compare_at_price");
-  const componentIds = packageType === "fixed" ? fd.getAll("component_ids").map(Number).filter(Boolean) : [];
   const data = {
     kind,
     name,
@@ -93,7 +95,7 @@ export async function saveProduct(_prev, fd) {
     // Bundle packages have no size of their own: each included product has its sizes.
     sizes: JSON.stringify(componentIds.length || pick ? [] : csv(fd.get("sizes"))),
     pick_category_id: pick?.categoryId ?? null,
-    pick_min: pick?.min ?? null,
+    pick_min: pick?.min ?? null, // set = a pick-your-own package
     pick_max: pick?.max ?? null,
     pick_prices: pick ? JSON.stringify(pick.prices) : null,
     stock_qty: Math.max(0, num(fd, "stock_qty") || 0),
@@ -172,19 +174,14 @@ export async function deleteProduct(fd) {
   redirect(fd.get("return_to") === "packages" ? "/admin/campaign" : "/admin/products");
 }
 
-/**
- * Admin, Products: put one product in, or take it out of, a package.
- * Fixed bundle: an included item (added last). Pick-your-own: a link to the bundle's category.
- */
+/** Admin, Products: put one product in, or take it out of, a package's product list. */
 export async function setProductInPackage(productId, packageId, include) {
   await requireAdmin();
   const product = await queryOne("SELECT id FROM products WHERE id = ? AND kind = 'product'", [Number(productId)]);
-  const pkg = await queryOne("SELECT id, name, pick_category_id FROM products WHERE id = ? AND kind = 'package'", [Number(packageId)]);
+  const pkg = await queryOne("SELECT id, pick_category_id FROM products WHERE id = ? AND kind = 'package'", [Number(packageId)]);
   if (!product || !pkg) return { error: "That product or package no longer exists." };
-  if (pkg.pick_category_id) {
-    if (include) await query("INSERT IGNORE INTO product_categories (product_id, category_id) VALUES (?,?)", [product.id, pkg.pick_category_id]);
-    else await query("DELETE FROM product_categories WHERE product_id = ? AND category_id = ?", [product.id, pkg.pick_category_id]);
-  } else if (include) {
+  if (include) {
+    // Every package type keeps its products in one list (fixed: the items; pick: the choices), added last.
     await query(
       `INSERT IGNORE INTO package_components (package_id, product_id, sort_order)
        SELECT ?, ?, COALESCE(MAX(sort_order), -1) + 1 FROM package_components WHERE package_id = ?`,
@@ -192,6 +189,8 @@ export async function setProductInPackage(productId, packageId, include) {
     );
   } else {
     await query("DELETE FROM package_components WHERE package_id = ? AND product_id = ?", [pkg.id, product.id]);
+    // A pick list that also takes in a category: take it out of that category too.
+    if (pkg.pick_category_id) await query("DELETE FROM product_categories WHERE product_id = ? AND category_id = ?", [product.id, pkg.pick_category_id]);
   }
   invalidateStore();
   revalidatePath("/admin/products");

@@ -6,7 +6,7 @@ import { formatNaira } from "@/lib/format";
 const TYPES = [
   ["simple", "Simple package", "One item with a written list of what's included."],
   ["fixed", "Fixed items", "Set products sold together; the shopper picks a size for each."],
-  ["pick", "Shopper picks from a category", "The shopper chooses a number of outfits from a category, at a fixed price per number."],
+  ["pick", "Shopper picks from a list", "The shopper chooses a number of outfits from a list, at a fixed price per number."],
 ];
 
 /**
@@ -44,22 +44,28 @@ export default function PackageTypeFields({ initialType, bundleProducts, compone
         ))}
       </div>
 
-      {type === "fixed" && <BundlePicker products={bundleProducts} initial={componentIds} />}
+      {/* One list for both: the bundle's items (fixed) or the outfits shoppers choose from (pick). */}
+      {(type === "fixed" || type === "pick") && (
+        <div>
+          {type === "pick" && <p className="label">Outfits shoppers can choose from</p>}
+          <BundlePicker products={bundleProducts} initial={componentIds} mode={type} />
+        </div>
+      )}
 
       {type === "pick" && (
         <div className="space-y-4">
           <div>
-            <label className="label" htmlFor="pick_category_id">Outfits come from this category</label>
-            <select id="pick_category_id" name="pick_category_id" required value={categoryId} onChange={(e) => setCategoryId(e.target.value)} className="input">
-              <option value="">Choose a category…</option>
+            <label className="label" htmlFor="pick_category_id">Also include a whole category (optional)</label>
+            <select id="pick_category_id" name="pick_category_id" value={categoryId} onChange={(e) => setCategoryId(e.target.value)} className="input">
+              <option value="">No category, just the list above</option>
               {categories.map((c) => (
                 <option key={c.id} value={c.id}>{c.path}</option>
               ))}
             </select>
             <p className="mt-1 text-xs text-muted">
               {cat
-                ? `${cat.pool_count} product${cat.pool_count === 1 ? "" : "s"} in this category (including sub-categories). Only visible products are offered to shoppers.`
-                : "Tip: create a category for each bundle (untick “Show in menu” if it shouldn’t appear in the shop menu), then add outfits to it from Admin, Products."}
+                ? `Adds the ${cat.pool_count} visible product${cat.pool_count === 1 ? "" : "s"} in this category (and its sub-categories) to the list above, including any added to the category later.`
+                : "Handy for big collections: put the outfits in a category (Admin, Products, Add to category) and choose it here."}
             </p>
           </div>
           <div className="grid max-w-sm grid-cols-2 gap-4">

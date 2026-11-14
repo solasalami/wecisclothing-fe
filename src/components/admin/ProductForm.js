@@ -85,7 +85,7 @@ export default function ProductForm({ product, categories, kind = "product", def
             step="1"
             defaultValue={p.price != null ? Number(p.price) : ""}
             required={!isPackage}
-            hint={isPackage ? "Not used for \u201cShopper picks from a category\u201d packages: they use the price for each number of outfits." : undefined}
+            hint={isPackage ? "Not used for \u201cShopper picks from a list\u201d packages: they use the price for each number of outfits." : undefined}
           />
           <Field label="Compare-at price" name="compare_at_price" type="number" min="0" step="1" defaultValue={p.compare_at_price ? Number(p.compare_at_price) : ""} hint="Optional old price, shown struck through." />
           <Check
